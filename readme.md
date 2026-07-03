@@ -69,7 +69,7 @@ Essa etapa funciona como um guardrail local antes das chamadas para APIs externa
 
 ### 2. Geração Semântica de Prompt
 
-Após a validação, as classes detectadas são enviadas para um agente baseado em Gemini.
+Após a validação, as classes detectadas são enviadas para uma etapa baseada em Gemini.
 
 Esse agente transforma os alimentos identificados em um prompt mais rico, específico e adequado para fotografia gastronômica comercial.
 
