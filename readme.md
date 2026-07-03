@@ -1,6 +1,7 @@
 # Food Premium AI Enhancer 🍲
 
-Pipeline de visão computacional e IA generativa para validar imagens gastronômicas e transformá-las em fotos comerciais otimizadas para cardápios digitais, delivery e redes sociais.
+Pipeline de visão computacional e IA generativa com etapas especializadas, guardrails e fallback
+para validar imagens gastronômicas e transformá-las em fotos comerciais otimizadas para cardápios digitais, delivery e redes sociais.
 
 O projeto combina um backend em Django REST Framework, um modelo local de detecção de objetos com RT-DETR e integração com modelos generativos como Gemini e FLUX. A proposta é evitar chamadas desnecessárias para APIs externas validando primeiro se a imagem enviada contém alimentos permitidos.
 
