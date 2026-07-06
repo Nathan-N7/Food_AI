@@ -1,6 +1,7 @@
-from django.urls import path
-from .views import ValidateFoodView
+from django.contrib import admin;
+from django.urls import path;
+from .views import validationFoodView;
 
 urlpatterns = [
-    path('validar/', ValidateFoodView.as_view(), name='validar_comida')
+    path("generate/", validationFoodView.as_view(), name = "generate"),
 ]
