@@ -16,6 +16,7 @@ st.write("Adicione sua foto aqui para que possamos transforma la!!!")
 st.divider()
 
 DJANGO_API_URL = "http://127.0.0.1:8000/api/generate/"
+REGENERATE_URL = "http://127.0.0.1:8000/api/regenerate/"
 
 UPLOAD_FILE = st.file_uploader("suba aqui seu arquivo jpg , jpeg ou png", type=["jpg", "jpeg","png"])
 if UPLOAD_FILE is not None:
@@ -33,9 +34,42 @@ if UPLOAD_FILE is not None:
                 response = requests.post(DJANGO_API_URL, files=files)
                 if response.status_code == 200:
                     data = response.json();
+                    
+                    st.session_state["thread_id"] = data.get("thread_id")
+                    st.session_state["url_image"] = data.get("url_image")
+                    st.session_state["analysis"] = data.get("analysis")
+                    st.session_state["prompt"] = data.get("prompt")
+                    
                     st.success("Imagem aprovada");
                     st.markdown("###Resultado final Food AI");
                     st.image(data.get('url_image'), caption="Imagem Comercial Premium Gerada", use_container_width=True)
+
+
+                    if st.session_state.get("thread_id"):
+                        if st.button("🔁 Gerar nova versão sem reanalisar"):
+                            with st.spinner("Gerando nova versão com o mesmo prompt..."):
+                                response = requests.post(
+                                    REGENERATE_URL,
+                                    json={
+                                        "thread_id": st.session_state["thread_id"]
+                                    },
+                                    timeout=600
+                                )
+
+                                if response.status_code == 200:
+                                    data = response.json()
+
+                                    st.session_state["url_image"] = data.get("url_image")
+
+                                    st.success("Nova versão gerada sem chamar Gemini novamente.")
+                                    st.image(
+                                        st.session_state["url_image"],
+                                        caption="Nova versão gerada",
+                                        use_container_width=True
+                                    )
+                                else:
+                                    st.error("Erro ao regenerar imagem")
+                                    st.text(response.text)
                 else:    
                     data = response.json()
                     erro_msg = data.get('erro', data.get('message', 'Erro desconhecido.'))
