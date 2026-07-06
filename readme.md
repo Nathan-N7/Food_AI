@@ -1,5 +1,7 @@
 # Food Premium AI Enhancer 🍲
 
+(Branch v2 com atualizações importantes do projeto está disponivel)
+
 Pipeline de visão computacional e IA generativa com etapas especializadas, guardrails e fallback
 para validar imagens gastronômicas e transformá-las em fotos comerciais otimizadas para cardápios digitais, delivery e redes sociais.
 
