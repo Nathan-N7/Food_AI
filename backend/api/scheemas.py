@@ -6,12 +6,12 @@ class DetectionResult(BaseModel):
     validate:bool
 
 class GeminiAnalysis(BaseModel):
-    food_identify: str
+    food_identity: str
     visible_elements: list[str]
     container: str
     background:str
     camera_angle:str
-    ligthing_problems: str
+    lighting_problem: str
     texture_problem: str
     commercial_improvement_goal: str
     risk_of_hallucination:Literal["low", "middle", "high"]

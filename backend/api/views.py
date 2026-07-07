@@ -151,7 +151,7 @@ class validationFoodView(APIView):
             save_image_from_url(url_image);
             
             response_model = PipelineResponse(
-                resiltado=result_model,
+                resultado=result_model,
                 analysis=analysis_model,
                 prompt=prompt_model,
                 url_image=url_image

@@ -72,6 +72,7 @@ if UPLOAD_FILE is not None:
                                     st.text(response.text)
                 else:    
                     data = response.json()
+                    st.json(data)
                     erro_msg = data.get('erro', data.get('message', 'Erro desconhecido.'))
             except Exception as e:
                 st.error(f"Falha ao conectar com o servidor Django backend: {str(e)}")
