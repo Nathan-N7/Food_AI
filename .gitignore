@@ -12,7 +12,9 @@ ENV/
 # Arquivos de Configuração / Chaves
 .env
 *.env
-.env*
+.env.*
+!.env.example
+!**/.env.example
 
 # Python caches
 __pycache__/

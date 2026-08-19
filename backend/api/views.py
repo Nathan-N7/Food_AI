@@ -17,6 +17,21 @@ from .graph import food_graph
 
 from .services.flux_image_generate import flux_image_generate
 
+from django.contrib.auth import authenticate, get_user_model
+from django.contrib.auth.password_validation import validate_password
+from django.core.exceptions import ValidationError as DjangoValidationError
+
+from rest_framework.authtoken.models import Token
+from rest_framework.permissions import AllowAny
+
+from rest_framework.authentication import TokenAuthentication
+from rest_framework.permissions import IsAuthenticated
+
+
+from .models import Generation
+
+User = get_user_model()
+
 
 class RegenerateImageView(APIView):
     def post(self, request, *args, **kwargs):
@@ -95,6 +110,9 @@ class RegenerateImageView(APIView):
 
 
 class validationFoodView(APIView):
+    authentication_classes = [TokenAuthentication]
+    permission_classes = [IsAuthenticated]
+
     def post(self, request, *arg, **args):
         file_image = request.FILES.get("image")
 
@@ -150,6 +168,17 @@ class validationFoodView(APIView):
          
             save_image_from_url(url_image);
             
+            file_image.seek(0)
+
+            generation = Generation.objects.create(
+                user=request.user,
+                original_image=file_image,
+                generated_image=url_image,
+                prompt=prompt_model.model_dump(),
+                status="completed",
+            )
+
+
             response_model = PipelineResponse(
                 resultado=result_model,
                 analysis=analysis_model,
@@ -182,3 +211,121 @@ class validationFoodView(APIView):
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
         
+class RegisterView(APIView):
+    authentication_classes = []
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        username = (request.data.get("username") or "").strip()
+        email = (request.data.get("email") or "").strip()
+        password = request.data.get("password") or ""
+
+        if not username or not password:
+            return Response(
+                {"error": "username e password são obrigatórios"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if User.objects.filter(username=username).exists():
+            return Response(
+                {"error": "username já existe"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            validate_password(password)
+        except DjangoValidationError as e:
+            return Response(
+                {
+                    "error": "senha inválida",
+                    "details": list(e.messages),
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        user = User.objects.create_user(
+            username=username,
+            email=email,
+            password=password,
+        )
+
+        return Response(
+            {
+                "id": user.id,
+                "username": user.username,
+                "email": user.email,
+            },
+            status=status.HTTP_201_CREATED,
+        )
+
+
+class LoginView(APIView):
+    authentication_classes = []
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        username = (request.data.get("username") or "").strip()
+        password = request.data.get("password") or ""
+
+        if not username or not password:
+            return Response(
+                {"error": "username e password são obrigatórios"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        user = authenticate(
+            request=request,
+            username=username,
+            password=password,
+        )
+
+        if user is None:
+            return Response(
+                {"error": "credenciais inválidas"},
+                status=status.HTTP_401_UNAUTHORIZED,
+            )
+
+        token, _ = Token.objects.get_or_create(user=user)
+
+        return Response(
+            {
+                "token": token.key,
+                "user": {
+                    "id": user.id,
+                    "username": user.username,
+                    "email": user.email,
+                },
+            },
+            status=status.HTTP_200_OK,
+        )
+
+
+class GenerationListView(APIView):
+    authentication_classes = [TokenAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        generations = (
+            Generation.objects
+            .filter(user=request.user)
+            .order_by("-created_at")
+        )
+
+        data = []
+        for generation in generations:
+            original_image_url = (
+                request.build_absolute_uri(generation.original_image.url)
+                if generation.original_image
+                else None
+            )
+
+            data.append({
+                "id": generation.id,
+                "status": generation.status,
+                "prompt": generation.prompt,
+                "original_image": original_image_url,
+                "generated_image": generation.generated_image,
+                "created_at": generation.created_at.isoformat(),
+            })
+
+        return Response(data, status=status.HTTP_200_OK)
