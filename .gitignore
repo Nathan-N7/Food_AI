@@ -27,3 +27,7 @@ db.sqlite3
 
 # Arquivos do sistema
 .DS_Store
+
+
+# Media gerada em runtime
+backend/media/
