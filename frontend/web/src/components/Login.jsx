@@ -51,66 +51,92 @@ const Login = () => {
       navigate('/dashboard')
     } catch (error) {
       console.error(error)
-      setMessage('Não foi possível conectar ao backend')
+
+      setMessage(
+        'Não foi possível conectar ao backend',
+      )
     } finally {
       setLoading(false)
     }
   }
 
   return (
-    <section>
-      <h1>Food AI</h1>
-      <h2>Login</h2>
+    <main>
+      <section>
+        <h1>Food AI</h1>
+        <h2>Login</h2>
 
-      <form onSubmit={handleLogin}>
+        <form onSubmit={handleLogin}>
+          <div>
+            <label htmlFor="username">
+              Usuário
+            </label>
+
+            <br />
+
+            <input
+              id="username"
+              type="text"
+              value={username}
+              onChange={(event) => {
+                setUsername(event.target.value)
+              }}
+              required
+            />
+          </div>
+
+          <div>
+            <label htmlFor="password">
+              Senha
+            </label>
+
+            <br />
+
+            <input
+              id="password"
+              type="password"
+              value={password}
+              onChange={(event) => {
+                setPassword(event.target.value)
+              }}
+              required
+            />
+          </div>
+
+          <button
+            type="submit"
+            disabled={loading}
+          >
+            {loading ? 'Entrando...' : 'Entrar'}
+          </button>
+        </form>
+
+        {message && <p>{message}</p>}
+
         <div>
-          <label htmlFor="username">
-            Usuário
-          </label>
+          <button
+            type="button"
+            onClick={() => navigate('/register')}
+          >
+            Create an account
+          </button>
 
-          <br />
+          <button
+            type="button"
+            onClick={() => navigate('/privacy')}
+          >
+            Privacy Policy
+          </button>
 
-          <input
-            id="username"
-            type="text"
-            value={username}
-            onChange={(event) => {
-              setUsername(event.target.value)
-            }}
-            required
-          />
+          <button
+            type="button"
+            onClick={() => navigate('/terms')}
+          >
+            Terms of Service
+          </button>
         </div>
-
-        <div>
-          <label htmlFor="password">
-            Senha
-          </label>
-
-          <br />
-
-          <input
-            id="password"
-            type="password"
-            value={password}
-            onChange={(event) => {
-              setPassword(event.target.value)
-            }}
-            required
-          />
-        </div>
-
-        <button
-          type="submit"
-          disabled={loading}
-        >
-          {loading ? 'Entrando...' : 'Entrar'}
-        </button>
-      </form>
-
-      {message && <p>{message}</p>}
-
-      <button onClick={()=>navigate('/register')}>CREATE  A  ACOUNT</button>
-    </section>
+      </section>
+    </main>
   )
 }
 

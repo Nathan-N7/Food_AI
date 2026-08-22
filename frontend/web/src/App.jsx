@@ -9,6 +9,9 @@ import Generate from './components/Generate.jsx'
 import History from './components/History'
 import Register from './components/Register'
 import Dashboard from './components/Dashboard.jsx'
+import Privacy from './components/Privacy.jsx'
+import Terms from './components/Terms.jsx'
+
 
 function ProtectedRoute({ children }) {
   const token = localStorage.getItem('token')
@@ -78,6 +81,26 @@ function App() {
         element={
           <ProtectedRoute>
             <Dashboard />
+          </ProtectedRoute>
+        }
+      />
+
+        
+            <Route
+        path="/privacy"
+        element={
+          <ProtectedRoute>
+            <Privacy/>
+          </ProtectedRoute>
+        }
+      />
+
+
+             <Route
+        path="/terms"
+        element={
+          <ProtectedRoute>
+            <Terms/>
           </ProtectedRoute>
         }
       />

@@ -127,6 +127,23 @@ const Register = () => {
         Já tenho uma conta
       </button>
 
+      
+       <button
+            type="button"
+            onClick={() => navigate('/privacy')}
+          >
+            Privacy Policy
+          </button>
+
+          <button
+            type="button"
+            onClick={() => navigate('/terms')}
+          >
+            Terms of Service
+          </button>
+
+
+
       {message && <p>{message}</p>}
     </main>
   )
