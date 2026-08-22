@@ -1,0 +1,19 @@
+--extra-index-url https://download.pytorch.org/whl/cpu
+
+Django==5.2.15
+django-cors-headers==4.9.0
+djangorestframework==3.18.0
+
+psycopg[binary]==3.3.4
+python-dotenv==1.2.3
+
+pydantic==2.13.4
+langgraph==1.2.11
+
+replicate==1.0.7
+requests==2.34.2
+Pillow==12.3.0
+
+torch==2.13.0+cpu
+torchvision==0.28.0+cpu
+ultralytics==8.4.121
