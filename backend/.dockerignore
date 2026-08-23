@@ -1,0 +1,17 @@
+.env
+.env.*
+!.env.example
+
+__pycache__/
+*.pyc
+*.pyo
+
+venv/
+.venv/
+
+media/
+
+.git/
+.gitignore
+
+*.log
