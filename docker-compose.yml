@@ -51,6 +51,18 @@ services:
       python manage.py runserver 0.0.0.0:8000
       "
 
+  frontend:
+    build:
+      context: ./frontend/web
+
+    container_name: food-ai-frontend
+
+    ports:
+      - "5173:80"
+
+    depends_on:
+      - backend
+
 volumes:
   food_ai_postgres_data:
   food_ai_media:
