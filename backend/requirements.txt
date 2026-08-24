@@ -17,3 +17,5 @@ Pillow==12.3.0
 torch==2.13.0+cpu
 torchvision==0.28.0+cpu
 ultralytics==8.4.121
+
+gunicorn==23.0.0

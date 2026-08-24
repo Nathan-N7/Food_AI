@@ -48,9 +48,11 @@ services:
     command: >
       sh -c "
       python manage.py migrate &&
-      python manage.py runserver 0.0.0.0:8000
+      gunicorn config.wsgi:application
+      --bind 0.0.0.0:8000
+      --workers 1
+      --timeout 300
       "
-
   frontend:
     build:
       context: ./frontend/web
@@ -58,7 +60,8 @@ services:
     container_name: food-ai-frontend
 
     ports:
-      - "5173:80"
+          - "8080:80"
+          - "8443:443"
 
     depends_on:
       - backend
