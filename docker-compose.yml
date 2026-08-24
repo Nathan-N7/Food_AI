@@ -9,8 +9,8 @@ services:
     volumes:
       - food_ai_postgres_data:/var/lib/postgresql/data
 
-    ports:
-      - "5433:5432"
+    expose:
+      - "5432"
 
     healthcheck:
       test:
@@ -35,8 +35,8 @@ services:
       POSTGRES_HOST: db
       POSTGRES_PORT: 5432
 
-    ports:
-      - "8000:8000"
+    expose:
+      - "8000"
 
     volumes:
       - food_ai_media:/app/media
@@ -53,6 +53,7 @@ services:
       --workers 1
       --timeout 300
       "
+
   frontend:
     build:
       context: ./frontend/web
@@ -60,8 +61,11 @@ services:
     container_name: food-ai-frontend
 
     ports:
-          - "8080:80"
-          - "8443:443"
+      - "8080:80"
+      - "8443:443"
+
+    volumes:
+      - food_ai_media:/media:ro
 
     depends_on:
       - backend

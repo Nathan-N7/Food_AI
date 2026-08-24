@@ -9,14 +9,24 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 load_dotenv(BASE_DIR / ".env")
 
 
-SECRET_KEY = (
-    "django-insecure-2))bl-$!t(l*gec!yj%*p_o&a!-e^58gpv8^o#h1^2miwl%olv"
+SECRET_KEY = os.getenv(
+    "DJANGO_SECRET_KEY",
+    "development-only-secret-key",
 )
 
-DEBUG = True
+DEBUG = (
+    os.getenv("DJANGO_DEBUG", "False").lower()
+    == "true"
+)
 
-ALLOWED_HOSTS = []
-
+ALLOWED_HOSTS = [
+    host.strip()
+    for host in os.getenv(
+        "DJANGO_ALLOWED_HOSTS",
+        "localhost,127.0.0.1",
+    ).split(",")
+    if host.strip()
+]
 
 SECURE_PROXY_SSL_HEADER = (
     "HTTP_X_FORWARDED_PROTO",
