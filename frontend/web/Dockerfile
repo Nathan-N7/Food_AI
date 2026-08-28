@@ -8,8 +8,8 @@ RUN npm ci
 COPY . .
 RUN npm run build
 
-
-FROM nginx:alpine
+#FROM nginx:alpine
+FROM docker.io/library/nginx:alpine
 
 RUN apk add --no-cache openssl \
     && mkdir -p /etc/nginx/certs \

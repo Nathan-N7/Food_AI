@@ -4,7 +4,7 @@ import {
   Routes,
 } from 'react-router-dom'
 
-import Login from './components/Login.jsx' 
+import Login from './components/Login.jsx'
 import Generate from './components/Generate.jsx'
 import History from './components/History'
 import Register from './components/Register'
@@ -57,7 +57,7 @@ function App() {
       />
 
 
-       <Route
+      <Route
         path="/history"
         element={
           <ProtectedRoute>
@@ -70,9 +70,7 @@ function App() {
       <Route
         path="/register"
         element={
-          <ProtectedRoute>
-            <Register/>
-          </ProtectedRoute>
+          <Register />
         }
       />
 
@@ -85,23 +83,19 @@ function App() {
         }
       />
 
-        
-            <Route
+
+      <Route
         path="/privacy"
         element={
-          <ProtectedRoute>
-            <Privacy/>
-          </ProtectedRoute>
+          <Privacy />
         }
       />
 
 
-             <Route
+      <Route
         path="/terms"
         element={
-          <ProtectedRoute>
-            <Terms/>
-          </ProtectedRoute>
+          <Terms />
         }
       />
 
