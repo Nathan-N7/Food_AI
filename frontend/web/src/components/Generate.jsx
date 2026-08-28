@@ -24,6 +24,7 @@ const Generate = () => {
   const [result, setResult] = useState(null)
   const [message, setMessage] = useState('')
   const [generating, setGenerating] = useState(false)
+  const [preview, setPreview] = useState(null)
 
   function handleLogout() {
     localStorage.removeItem('token')
@@ -97,6 +98,17 @@ const Generate = () => {
 
       <h2>Gerar imagem</h2>
 
+      {preview && (
+        <div>
+          <p>Preview:</p>
+          <img
+            src={preview}
+            alt="Preview da imagem selecionada"
+            style={{ width: '100%', maxWidth: '300px' }}
+          />
+        </div>
+      )}
+
       <form onSubmit={handleGenerate}>
         <div>
           <input
@@ -104,6 +116,8 @@ const Generate = () => {
             accept="image/*"
             onChange={(event) => {
               setImage(event.target.files?.[0] || null)
+              if (preview) URL.revokeObjectURL(preview)
+              setPreview(event.target.files?.[0] ? URL.createObjectURL(event.target.files?.[0]) : null)
             }}
           />
         </div>
@@ -147,7 +161,7 @@ const Generate = () => {
           />
         </section>
       )}
-      <button onClick={()=> navigate('/history')}>Histórico</button>
+      <button onClick={() => navigate('/history')}>Histórico</button>
     </main>
   )
 }
