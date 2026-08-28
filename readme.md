@@ -171,10 +171,10 @@ without full team understanding of its purpose and function.
 
 | Login | Name | Roles | Responsibilities |
 |---|---|---|---|
-| [LOGIN_1] | [Name 1] | Product Owner, Developer | Product vision, backlog prioritization, feature validation, frontend development |
-| [LOGIN_2] | [Name 2] | Project Manager, Developer | Sprint planning, task tracking, team coordination, backend development |
-| [LOGIN_3] | [Name 3] | Tech Lead, Developer | Architecture decisions, code review, AI pipeline design and implementation |
-| [LOGIN_4] | [Name 4] | Developer | Frontend components, Docker configuration, deployment pipeline |
+| [uviana-b] | Ubiratan | Product Owner, Developer, Docker configuration | Product vision, backlog prioritization, feature validation, frontend development |
+| [natrodri] | Nathan | Project Manager, Developer | Sprint planning, task tracking, team coordination, backend development, frontend development |
+| [eteofilo] | Elissandro | Developer | Architecture decisions, code review, design and implementation |
+| [alda-sil] | Alexandre | Developer | Frontend components, deployment pipeline |
 
 > **Note for evaluators:** This project was developed by a team of [3/4/5] members.
 > All team members contributed to both the mandatory part and the chosen modules.
