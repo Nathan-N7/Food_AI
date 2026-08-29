@@ -1,4 +1,4 @@
-*This project has been created as part of the 42 curriculum by [LOGIN_1], [LOGIN_2], [LOGIN_3], [LOGIN_4].*
+*This project has been created as part of the 42 curriculum by [UVIANA-B], [NATRODRI], [ETEOFILO], [ALDA-SIL].*
 
 ---
 
