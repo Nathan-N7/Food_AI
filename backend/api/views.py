@@ -421,3 +421,28 @@ class GenerationListView(APIView):
             data,
             status=status.HTTP_200_OK,
         )
+
+
+class GenerationDeleteView(APIView):
+    authentication_classes = [TokenAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    def delete(self, request, pk):
+        try:
+            generation = Generation.objects.get(
+                pk=pk,
+                user=request.user,
+            )
+        except Generation.DoesNotExist:
+            return Response(
+                {"error": "Geração não encontrada"},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        # Deleta o arquivo físico do disco junto
+        if generation.original_image:
+            generation.original_image.delete(save=False)
+
+        generation.delete()
+
+        return Response(status=status.HTTP_204_NO_CONTENT)

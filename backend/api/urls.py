@@ -7,7 +7,7 @@ from .views import (
     RegisterView,
     LoginView,
     GenerationListView,
-
+    GenerationDeleteView
 )
 
 
@@ -17,5 +17,6 @@ urlpatterns = [
     path("generate/", validationFoodView.as_view(), name="generate"),
     path("regenerate/", RegenerateImageView.as_view(), name="regenerate"),
     path("generations/", GenerationListView.as_view(), name="generations-list"),
+    path("generations/<int:pk>/", GenerationDeleteView.as_view(), name="generation-delete"),
     
 ]

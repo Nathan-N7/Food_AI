@@ -25,6 +25,7 @@ const Generate = () => {
   const [message, setMessage] = useState('')
   const [generating, setGenerating] = useState(false)
   const [preview, setPreview] = useState(null)
+  const [progress, setProgress] = useState(0)
 
   function handleLogout() {
     localStorage.removeItem('token')
@@ -51,37 +52,44 @@ const Generate = () => {
     setGenerating(true)
     setMessage('Gerando imagem...')
     setResult(null)
+    setProgress(0)
 
     const formData = new FormData()
     formData.append('image', image)
 
-    try {
-      const response = await fetch(
-        `${API_URL}/generate/`,
-        {
-          method: 'POST',
-          headers: {
-            Authorization: `Token ${token}`,
-          },
-          body: formData,
-        },
-      )
+    const xhr = new XMLHttpRequest()
 
-      const data = await response.json()
-
-      if (!response.ok) {
-        setMessage(data.error || 'Erro ao gerar imagem')
-        return
+    // Atualiza a % durante o upload
+    xhr.upload.onprogress = (event) => {
+      if (event.lengthComputable) {
+        const percent = Math.round((event.loaded / event.total) * 100)
+        setProgress(percent)
       }
-
-      setResult(data)
-      setMessage('Imagem gerada com sucesso')
-    } catch (error) {
-      console.error(error)
+    }
+    // Quando o servidor responde
+    xhr.onload = () => {
+      try {
+        const data = JSON.parse(xhr.responseText)
+        if (xhr.status >= 200 && xhr.status < 300) {
+          setResult(data)
+          setMessage('Imagem gerada com sucesso')
+        } else {
+          setMessage(data.error || 'Erro ao gerar imagem')
+        }
+      } catch {
+        setMessage('Resposta inválida do servidor')
+      } finally {
+        setGenerating(false)
+      }
+    }
+    // Se a conexão cair
+    xhr.onerror = () => {
       setMessage('Não foi possível concluir a geração')
-    } finally {
       setGenerating(false)
     }
+    xhr.open('POST', `${API_URL}/generate/`)
+    xhr.setRequestHeader('Authorization', `Token ${token}`)
+    xhr.send(formData)
   }
 
   return (
@@ -121,7 +129,12 @@ const Generate = () => {
             }}
           />
         </div>
-
+        {generating && (
+          <div>
+            <progress value={progress} max={100} style={{ width: '100%' }} />
+            <p>{progress}% enviado — aguardando processamento da IA...</p>
+          </div>
+        )}
         <br />
 
         <button type="submit" disabled={generating}>

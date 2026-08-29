@@ -56,6 +56,40 @@ const History = () => {
     navigate('/generate')
   }
 
+  async function handleDelete(generationId) {
+    const token = localStorage.getItem('token')
+
+    if (!token) {
+      setMessage('Faça login novamente')
+      return
+    }
+
+    try {
+      const response = await fetch(
+        `${API_URL}/generations/${generationId}/`,
+        {
+          method: 'DELETE',
+          headers: {
+            Authorization: `Token ${token}`,
+          },
+        },
+      )
+
+      if (!response.ok) {
+        const data = await response.json()
+        setMessage(data.error || 'Erro ao excluir')
+        return
+      }
+
+      // Remove do estado local
+      setHistory(history.filter((gen) => gen.id !== generationId))
+      setMessage('Geração excluída com sucesso')
+    } catch (error) {
+      console.error('Erro ao excluir:', error)
+      setMessage('Erro de conexão')
+    }
+  }
+
   if (loading) {
     return (
       <main>
@@ -110,6 +144,13 @@ const History = () => {
               generation.created_at,
             ).toLocaleString()}
           </p>
+
+          <button
+            type="button"
+            onClick={() => handleDelete(generation.id)}
+          >
+            Deletar
+          </button>
 
           <div>
             <h4>Imagem original</h4>
