@@ -1,0 +1,366 @@
+/* Header Design System - Food AI */
+
+.fai-header {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  width: 100%;
+  background: rgba(var(--header-bg, 22, 23, 29), 0.85);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--border, #2e303a);
+  box-sizing: border-box;
+  transition: all 0.3s ease;
+}
+
+@media (prefers-color-scheme: light) {
+  .fai-header {
+    background: rgba(255, 255, 255, 0.85);
+  }
+}
+
+.fai-header-container {
+  max-width: 1126px;
+  margin: 0 auto;
+  padding: 0.75rem 1.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  box-sizing: border-box;
+}
+
+/* Left Section: Menu & Brand */
+.fai-header-left {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+/* Hamburger Button */
+.fai-hamburger-btn {
+  background: transparent;
+  border: 1px solid var(--border, #2e303a);
+  border-radius: 8px;
+  width: 42px;
+  height: 42px;
+  padding: 8px;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-around;
+  align-items: center;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  box-sizing: border-box;
+}
+
+.fai-hamburger-btn:hover {
+  background: var(--accent-bg, rgba(192, 132, 252, 0.15));
+  border-color: var(--accent, #c084fc);
+  transform: translateY(-1px);
+}
+
+.fai-hamburger-btn:focus-visible {
+  outline: 2px solid var(--accent, #c084fc);
+  outline-offset: 2px;
+}
+
+.fai-hamburger-line {
+  width: 20px;
+  height: 2px;
+  background-color: var(--text-h, #f3f4f6);
+  border-radius: 2px;
+  transition: all 0.3s ease-in-out;
+  transform-origin: center;
+}
+
+.fai-hamburger-btn.is-active .fai-hamburger-line:nth-child(1) {
+  transform: translateY(6px) rotate(45deg);
+}
+
+.fai-hamburger-btn.is-active .fai-hamburger-line:nth-child(2) {
+  opacity: 0;
+  transform: scaleX(0);
+}
+
+.fai-hamburger-btn.is-active .fai-hamburger-line:nth-child(3) {
+  transform: translateY(-6px) rotate(-45deg);
+}
+
+/* Brand / Logo */
+.fai-brand {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.fai-brand-icon {
+  font-size: 1.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  filter: drop-shadow(0 2px 4px rgba(192, 132, 252, 0.3));
+  transition: transform 0.3s ease;
+}
+
+.fai-brand:hover .fai-brand-icon {
+  transform: rotate(12deg) scale(1.1);
+}
+
+.fai-brand-title {
+  font-family: var(--heading, system-ui, sans-serif);
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--text-h, #f3f4f6);
+  letter-spacing: -0.5px;
+  margin: 0;
+}
+
+.fai-brand-badge {
+  font-size: 0.65rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: var(--accent-bg, rgba(192, 132, 252, 0.15));
+  color: var(--accent, #c084fc);
+  border: 1px solid var(--accent-border, rgba(192, 132, 252, 0.5));
+}
+
+/* Right Section: User Info & Avatar */
+.fai-header-right {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+}
+
+.fai-user-greeting {
+  display: flex;
+  flex-direction: column;
+  text-align: right;
+}
+
+.fai-greeting-label {
+  font-size: 0.75rem;
+  color: var(--text, #9ca3af);
+  line-height: 1.2;
+}
+
+.fai-user-name {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text-h, #f3f4f6);
+  max-width: 140px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Avatar Circle */
+.fai-avatar-wrapper {
+  position: relative;
+  width: 42px;
+  height: 42px;
+  cursor: pointer;
+}
+
+.fai-avatar-circle {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #aa3bff 0%, #6366f1 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #ffffff;
+  font-weight: 700;
+  font-size: 1rem;
+  box-shadow: 0 2px 8px rgba(170, 59, 255, 0.35);
+  border: 2px solid var(--border, #2e303a);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
+.fai-avatar-circle img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.fai-avatar-wrapper:hover .fai-avatar-circle {
+  transform: scale(1.06);
+  border-color: var(--accent, #c084fc);
+  box-shadow: 0 4px 14px rgba(192, 132, 252, 0.45);
+}
+
+.fai-status-indicator {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  width: 11px;
+  height: 11px;
+  background-color: #10b981;
+  border-radius: 50%;
+  border: 2px solid var(--bg, #16171d);
+  box-shadow: 0 0 6px rgba(16, 185, 129, 0.6);
+}
+
+/* Drawer / Sidebar Menu Navigation */
+.fai-drawer-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  z-index: 998;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.3s ease, visibility 0.3s ease;
+}
+
+.fai-drawer-overlay.is-open {
+  opacity: 1;
+  visibility: visible;
+}
+
+.fai-drawer {
+  position: fixed;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  width: 280px;
+  max-width: 80vw;
+  background: var(--bg, #16171d);
+  border-right: 1px solid var(--border, #2e303a);
+  box-shadow: 4px 0 24px rgba(0, 0, 0, 0.5);
+  z-index: 999;
+  transform: translateX(-100%);
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+}
+
+.fai-drawer.is-open {
+  transform: translateX(0);
+}
+
+.fai-drawer-header {
+  padding: 1.25rem 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--border, #2e303a);
+}
+
+.fai-drawer-close {
+  background: transparent;
+  border: none;
+  color: var(--text, #9ca3af);
+  font-size: 1.4rem;
+  width: 36px;
+  height: 36px;
+  border-radius: 6px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.fai-drawer-close:hover {
+  background: var(--social-bg, rgba(47, 48, 58, 0.5));
+  color: var(--text-h, #f3f4f6);
+}
+
+.fai-drawer-nav {
+  padding: 1rem 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  flex: 1;
+  overflow-y: auto;
+}
+
+.fai-nav-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
+  text-decoration: none;
+  font-size: 0.95rem;
+  font-weight: 500;
+  color: var(--text, #9ca3af);
+  transition: all 0.2s ease;
+  background: transparent;
+  border: 1px solid transparent;
+  cursor: pointer;
+  width: 100%;
+  text-align: left;
+  box-sizing: border-box;
+}
+
+.fai-nav-item:hover {
+  background: var(--social-bg, rgba(47, 48, 58, 0.5));
+  color: var(--text-h, #f3f4f6);
+  transform: translateX(3px);
+}
+
+.fai-nav-item.is-active {
+  background: var(--accent-bg, rgba(192, 132, 252, 0.15));
+  color: var(--accent, #c084fc);
+  border-color: var(--accent-border, rgba(192, 132, 252, 0.5));
+  font-weight: 600;
+}
+
+.fai-nav-icon {
+  font-size: 1.15rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+}
+
+.fai-drawer-footer {
+  padding: 1rem 0.75rem;
+  border-top: 1px solid var(--border, #2e303a);
+}
+
+.fai-logout-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  width: 100%;
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
+  background: rgba(239, 68, 68, 0.1);
+  color: #f87171;
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-sizing: border-box;
+}
+
+.fai-logout-btn:hover {
+  background: rgba(239, 68, 68, 0.2);
+  border-color: #ef4444;
+  color: #fca5a5;
+  transform: translateY(-1px);
+}
+
+/* Mobile Responsiveness */
+@media (max-width: 640px) {
+  .fai-user-greeting {
+    display: none;
+  }
+
+  .fai-brand-title {
+    font-size: 1.1rem;
+  }
+}

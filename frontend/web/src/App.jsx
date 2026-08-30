@@ -9,6 +9,9 @@ import Generate from './components/Generate.jsx'
 import History from './components/History'
 import Register from './components/Register'
 import Dashboard from './components/Dashboard.jsx'
+import Profile from './components/Profile.jsx'
+import UserProfile from './components/UserProfile.jsx'
+import Friends from './components/Friends.jsx'
 import Privacy from './components/Privacy.jsx'
 import Terms from './components/Terms.jsx'
 
@@ -58,27 +61,29 @@ function App() {
 
 
       <Route
-        path="/history"
+        path="/profile"
         element={
           <ProtectedRoute>
-            <History />
+            <Profile />
           </ProtectedRoute>
         }
       />
 
 
       <Route
-        path="/register"
+        path="/profile/:id"
         element={
-          <Register />
+          <ProtectedRoute>
+            <UserProfile />
+          </ProtectedRoute>
         }
       />
 
       <Route
-        path="/dashboard"
+        path="/friends"
         element={
           <ProtectedRoute>
-            <Dashboard />
+            <Friends />
           </ProtectedRoute>
         }
       />
