@@ -1,3 +1,4 @@
+
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 
@@ -27,6 +28,28 @@ const Generate = () => {
   const [preview, setPreview] = useState(null)
   const [progress, setProgress] = useState(0)
 
+  const notificarUsuario = (mensagem) => {
+    if (!('Notification' in window)) {
+      return
+    }
+
+    if (Notification.permission === 'granted') {
+      new Notification('Food AI', {
+        body: mensagem,
+        icon: '/pwa-192x192.png',
+      })
+    } else if (Notification.permission !== 'denied') {
+      Notification.requestPermission().then((permission) => {
+        if (permission === 'granted') {
+          new Notification('Food AI', {
+            body: mensagem,
+            icon: '/pwa-192x192.png',
+          })
+        }
+      })
+    }
+  }
+
   function handleLogout() {
     localStorage.removeItem('token')
     localStorage.removeItem('user')
@@ -54,6 +77,10 @@ const Generate = () => {
     setResult(null)
     setProgress(0)
 
+    if ('Notification' in window && Notification.permission === 'default') {
+      Notification.requestPermission()
+    }
+
     const formData = new FormData()
     formData.append('image', image)
 
@@ -66,15 +93,19 @@ const Generate = () => {
         setProgress(percent)
       }
     }
+
     // Quando o servidor responde
     xhr.onload = () => {
       try {
         const data = JSON.parse(xhr.responseText)
+
         if (xhr.status >= 200 && xhr.status < 300) {
           setResult(data)
           setMessage('Imagem gerada com sucesso')
+          notificarUsuario('Sua imagem está pronta! Venha ver o resultado.')
         } else {
           setMessage(data.error || 'Erro ao gerar imagem')
+          notificarUsuario('Ops, ocorreu um erro ao gerar sua imagem.')
         }
       } catch {
         setMessage('Resposta inválida do servidor')
@@ -82,11 +113,13 @@ const Generate = () => {
         setGenerating(false)
       }
     }
+
     // Se a conexão cair
     xhr.onerror = () => {
       setMessage('Não foi possível concluir a geração')
       setGenerating(false)
     }
+
     xhr.open('POST', `${API_URL}/generate/`)
     xhr.setRequestHeader('Authorization', `Token ${token}`)
     xhr.send(formData)
@@ -123,18 +156,28 @@ const Generate = () => {
             type="file"
             accept="image/*"
             onChange={(event) => {
-              setImage(event.target.files?.[0] || null)
-              if (preview) URL.revokeObjectURL(preview)
-              setPreview(event.target.files?.[0] ? URL.createObjectURL(event.target.files?.[0]) : null)
+              const selectedFile = event.target.files?.[0] || null
+
+              setImage(selectedFile)
+
+              if (preview) {
+                URL.revokeObjectURL(preview)
+              }
+
+              setPreview(
+                selectedFile ? URL.createObjectURL(selectedFile) : null,
+              )
             }}
           />
         </div>
+
         {generating && (
           <div>
             <progress value={progress} max={100} style={{ width: '100%' }} />
             <p>{progress}% enviado — aguardando processamento da IA...</p>
           </div>
         )}
+
         <br />
 
         <button type="submit" disabled={generating}>
@@ -147,10 +190,12 @@ const Generate = () => {
       {result?.resultado && (
         <section>
           <h3>Resultado da detecção</h3>
+
           <p>
             Classe detectada:{' '}
             <strong>{result.resultado.name_class}</strong>
           </p>
+
           <p>
             Válido:{' '}
             <strong>
@@ -174,9 +219,13 @@ const Generate = () => {
           />
         </section>
       )}
-      <button onClick={() => navigate('/history')}>Histórico</button>
+
+      <button onClick={() => navigate('/history')}>
+        Histórico
+      </button>
     </main>
   )
 }
 
 export default Generate
+
