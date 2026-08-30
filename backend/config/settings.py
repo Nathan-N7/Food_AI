@@ -23,7 +23,7 @@ ALLOWED_HOSTS = [
     host.strip()
     for host in os.getenv(
         "DJANGO_ALLOWED_HOSTS",
-        "localhost,127.0.0.1",
+        "localhost,127.0.0.1,backend,food-ai-backend,web",
     ).split(",")
     if host.strip()
 ]
@@ -39,10 +39,23 @@ CORS_ALLOWED_ORIGINS = [
     "http://127.0.0.1:8501",
     "http://localhost:5173",
     "http://127.0.0.1:5173",
+    "http://localhost:8080",
+    "http://127.0.0.1:8080",
+    "https://localhost:8443",
+    "https://127.0.0.1:8443",
+]
+
+CSRF_TRUSTED_ORIGINS = [
+    "http://localhost:8080",
+    "http://127.0.0.1:8080",
+    "https://localhost:8443",
+    "https://127.0.0.1:8443",
+    "http://backend:8000",
 ]
 
 
 INSTALLED_APPS = [
+    "daphne",
     "django.contrib.admin",
     "django.contrib.auth",
     "django.contrib.contenttypes",
@@ -54,6 +67,7 @@ INSTALLED_APPS = [
     "rest_framework",
     "corsheaders",
     "rest_framework.authtoken",
+    "channels",
 
     # apps locais
     "api",
@@ -93,6 +107,13 @@ TEMPLATES = [
 
 
 WSGI_APPLICATION = "config.wsgi.application"
+ASGI_APPLICATION = "config.asgi.application"
+
+CHANNEL_LAYERS = {
+    "default": {
+        "BACKEND": "channels.layers.InMemoryChannelLayer"
+    }
+}
 
 
 DATABASES = {

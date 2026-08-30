@@ -13,8 +13,12 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from django.db.models import Q
+from asgiref.sync import async_to_sync
+from channels.layers import get_channel_layer
+
 from .graph import food_graph
-from .models import Generation
+from .models import Friendship, Generation, Profile
 from .scheemas import (
     DetectionResult,
     GeminiAnalysis,
@@ -446,3 +450,528 @@ class GenerationDeleteView(APIView):
         generation.delete()
 
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+def notify_user_channel(user_id, action, data):
+    try:
+        channel_layer = get_channel_layer()
+        if channel_layer:
+            async_to_sync(channel_layer.group_send)(
+                f"user_{user_id}",
+                {
+                    "type": "friend_request_notification",
+                    "action": action,
+                    "data": data,
+                },
+            )
+    except Exception:
+        pass
+
+
+class ProfileDetailView(APIView):
+    authentication_classes = [TokenAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        user = request.user
+        profile, _ = Profile.objects.get_or_create(user=user)
+
+        generations_count = Generation.objects.filter(user=user).count()
+        friends_count = Friendship.objects.filter(
+            status="accepted"
+        ).filter(
+            Q(sender=user) | Q(receiver=user)
+        ).count()
+
+        avatar_url = profile.get_avatar_url(request)
+
+        return Response(
+            {
+                "id": user.id,
+                "username": user.username,
+                "email": user.email,
+                "nickname": profile.nickname,
+                "bio": profile.bio,
+                "avatar": avatar_url,
+                "is_online": profile.is_online,
+                "date_joined": user.date_joined.isoformat(),
+                "generations_count": generations_count,
+                "friends_count": friends_count,
+            },
+            status=status.HTTP_200_OK,
+        )
+
+    def put(self, request):
+        return self.patch(request)
+
+    def patch(self, request):
+        user = request.user
+        profile, _ = Profile.objects.get_or_create(user=user)
+
+        # Update basic profile fields
+        nickname = request.data.get("nickname")
+        if nickname is not None:
+            profile.nickname = nickname.strip()
+
+        bio = request.data.get("bio")
+        if bio is not None:
+            profile.bio = bio.strip()
+
+        email = request.data.get("email")
+        if email is not None:
+            email = email.strip()
+            if email and email != user.email:
+                if User.objects.filter(email=email).exclude(id=user.id).exists():
+                    return Response(
+                        {"error": "Este email já está em uso por outro usuário"},
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
+                user.email = email
+                user.save(update_fields=["email"])
+
+        # Handle avatar upload
+        avatar_file = request.FILES.get("avatar")
+        if avatar_file:
+            allowed_types = {"image/jpeg", "image/png", "image/webp", "image/gif"}
+            if avatar_file.content_type not in allowed_types:
+                return Response(
+                    {"error": "Formato de avatar não suportado (permitidos: JPG, PNG, WEBP, GIF)"},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            if avatar_file.size > 5 * 1024 * 1024:
+                return Response(
+                    {"error": "O avatar deve ter no máximo 5 MB"},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            # Delete old avatar file if present
+            if profile.avatar:
+                profile.avatar.delete(save=False)
+
+            profile.avatar = avatar_file
+
+        # Handle avatar removal
+        if request.data.get("remove_avatar") == "true" or request.data.get("remove_avatar") is True:
+            if profile.avatar:
+                profile.avatar.delete(save=False)
+                profile.avatar = None
+
+        profile.save()
+
+        # Handle password change
+        current_password = request.data.get("current_password")
+        new_password = request.data.get("new_password")
+        if new_password:
+            if not current_password or not user.check_password(current_password):
+                return Response(
+                    {"error": "Senha atual incorreta"},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            try:
+                validate_password(new_password, user=user)
+            except DjangoValidationError as e:
+                return Response(
+                    {"error": "Nova senha inválida", "details": list(e.messages)},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            user.set_password(new_password)
+            user.save(update_fields=["password"])
+
+        generations_count = Generation.objects.filter(user=user).count()
+        friends_count = Friendship.objects.filter(
+            status="accepted"
+        ).filter(
+            Q(sender=user) | Q(receiver=user)
+        ).count()
+
+        return Response(
+            {
+                "id": user.id,
+                "username": user.username,
+                "email": user.email,
+                "nickname": profile.nickname,
+                "bio": profile.bio,
+                "avatar": profile.get_avatar_url(request),
+                "is_online": profile.is_online,
+                "date_joined": user.date_joined.isoformat(),
+                "generations_count": generations_count,
+                "friends_count": friends_count,
+                "message": "Perfil atualizado com sucesso",
+            },
+            status=status.HTTP_200_OK,
+        )
+
+
+class UserProfileView(APIView):
+    authentication_classes = [TokenAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, pk):
+        try:
+            target_user = User.objects.get(pk=pk)
+        except User.DoesNotExist:
+            return Response(
+                {"error": "Usuário não encontrado"},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        target_profile, _ = Profile.objects.get_or_create(user=target_user)
+        generations_count = Generation.objects.filter(user=target_user).count()
+
+        # Check friendship status
+        friendship_status = "none"
+        friendship_id = None
+        if target_user == request.user:
+            friendship_status = "self"
+        else:
+            friendship = Friendship.objects.filter(
+                (Q(sender=request.user) & Q(receiver=target_user))
+                | (Q(sender=target_user) & Q(receiver=request.user))
+            ).first()
+
+            if friendship:
+                friendship_id = friendship.id
+                if friendship.status == "accepted":
+                    friendship_status = "accepted"
+                elif friendship.sender == request.user:
+                    friendship_status = "pending_sent"
+                else:
+                    friendship_status = "pending_received"
+
+        return Response(
+            {
+                "id": target_user.id,
+                "username": target_user.username,
+                "nickname": target_profile.nickname,
+                "bio": target_profile.bio,
+                "avatar": target_profile.get_avatar_url(request),
+                "is_online": target_profile.is_online,
+                "date_joined": target_user.date_joined.isoformat(),
+                "generations_count": generations_count,
+                "friendship_status": friendship_status,
+                "friendship_id": friendship_id,
+            },
+            status=status.HTTP_200_OK,
+        )
+
+
+class UserSearchView(APIView):
+    authentication_classes = [TokenAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        query = (request.query_params.get("q") or "").strip()
+        if not query:
+            return Response([], status=status.HTTP_200_OK)
+
+        users = User.objects.filter(
+            Q(username__icontains=query)
+            | Q(email__icontains=query)
+            | Q(profile__nickname__icontains=query)
+        ).exclude(id=request.user.id).select_related("profile")[:20]
+
+        # Get all existing friendships for current user to label status
+        user_friendships = Friendship.objects.filter(
+            Q(sender=request.user) | Q(receiver=request.user)
+        )
+        friendship_map = {}
+        for f in user_friendships:
+            other_id = f.receiver_id if f.sender_id == request.user.id else f.sender_id
+            if f.status == "accepted":
+                friendship_map[other_id] = ("accepted", f.id)
+            elif f.sender_id == request.user.id:
+                friendship_map[other_id] = ("pending_sent", f.id)
+            else:
+                friendship_map[other_id] = ("pending_received", f.id)
+
+        results = []
+        for u in users:
+            prof, _ = Profile.objects.get_or_create(user=u)
+            f_status, f_id = friendship_map.get(u.id, ("none", None))
+            results.append({
+                "id": u.id,
+                "username": u.username,
+                "nickname": prof.nickname,
+                "bio": prof.bio,
+                "avatar": prof.get_avatar_url(request),
+                "is_online": prof.is_online,
+                "friendship_status": f_status,
+                "friendship_id": f_id,
+            })
+
+        return Response(results, status=status.HTTP_200_OK)
+
+
+class FriendListView(APIView):
+    authentication_classes = [TokenAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        user = request.user
+        friendships = Friendship.objects.filter(
+            status="accepted"
+        ).filter(
+            Q(sender=user) | Q(receiver=user)
+        ).select_related("sender", "receiver", "sender__profile", "receiver__profile")
+
+        friends = []
+        for f in friendships:
+            friend_user = f.receiver if f.sender_id == user.id else f.sender
+            prof, _ = Profile.objects.get_or_create(user=friend_user)
+            friends.append({
+                "friendship_id": f.id,
+                "id": friend_user.id,
+                "username": friend_user.username,
+                "nickname": prof.nickname,
+                "bio": prof.bio,
+                "avatar": prof.get_avatar_url(request),
+                "is_online": prof.is_online,
+                "last_seen": prof.last_seen.isoformat() if prof.last_seen else None,
+                "since": f.updated_at.isoformat(),
+            })
+
+        return Response(friends, status=status.HTTP_200_OK)
+
+
+class FriendRequestsView(APIView):
+    authentication_classes = [TokenAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        user = request.user
+
+        # Requests received by current user
+        received_requests = Friendship.objects.filter(
+            receiver=user,
+            status="pending",
+        ).select_related("sender", "sender__profile")
+
+        # Requests sent by current user
+        sent_requests = Friendship.objects.filter(
+            sender=user,
+            status="pending",
+        ).select_related("receiver", "receiver__profile")
+
+        received_data = []
+        for r in received_requests:
+            sender_prof, _ = Profile.objects.get_or_create(user=r.sender)
+            received_data.append({
+                "id": r.id,
+                "user": {
+                    "id": r.sender.id,
+                    "username": r.sender.username,
+                    "nickname": sender_prof.nickname,
+                    "avatar": sender_prof.get_avatar_url(request),
+                    "is_online": sender_prof.is_online,
+                },
+                "created_at": r.created_at.isoformat(),
+            })
+
+        sent_data = []
+        for s in sent_requests:
+            receiver_prof, _ = Profile.objects.get_or_create(user=s.receiver)
+            sent_data.append({
+                "id": s.id,
+                "user": {
+                    "id": s.receiver.id,
+                    "username": s.receiver.username,
+                    "nickname": receiver_prof.nickname,
+                    "avatar": receiver_prof.get_avatar_url(request),
+                    "is_online": receiver_prof.is_online,
+                },
+                "created_at": s.created_at.isoformat(),
+            })
+
+        return Response(
+            {
+                "received": received_data,
+                "sent": sent_data,
+            },
+            status=status.HTTP_200_OK,
+        )
+
+
+class FriendRequestSendView(APIView):
+    authentication_classes = [TokenAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, user_id):
+        if request.user.id == user_id:
+            return Response(
+                {"error": "Você não pode enviar solicitação de amizade para você mesmo"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            target_user = User.objects.get(id=user_id)
+        except User.DoesNotExist:
+            return Response(
+                {"error": "Usuário não encontrado"},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        # Check existing friendship
+        existing = Friendship.objects.filter(
+            (Q(sender=request.user) & Q(receiver=target_user))
+            | (Q(sender=target_user) & Q(receiver=request.user))
+        ).first()
+
+        if existing:
+            if existing.status == "accepted":
+                return Response(
+                    {"error": "Vocês já são amigos"},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            elif existing.sender == request.user and existing.status == "pending":
+                return Response(
+                    {"error": "Solicitação de amizade já enviada"},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            elif existing.receiver == request.user and existing.status == "pending":
+                # Automatically accept if the other user had sent a request earlier
+                existing.status = "accepted"
+                existing.save()
+
+                # Real-time notify
+                notify_user_channel(
+                    existing.sender.id,
+                    "friend_accepted",
+                    {
+                        "friendship_id": existing.id,
+                        "user_id": request.user.id,
+                        "username": request.user.username,
+                    },
+                )
+                return Response(
+                    {
+                        "message": "Solicitação mútua aceita automaticamente!",
+                        "status": "accepted",
+                        "friendship_id": existing.id,
+                    },
+                    status=status.HTTP_200_OK,
+                )
+            else:
+                existing.sender = request.user
+                existing.receiver = target_user
+                existing.status = "pending"
+                existing.save()
+                friendship = existing
+        else:
+            friendship = Friendship.objects.create(
+                sender=request.user,
+                receiver=target_user,
+                status="pending",
+            )
+
+        # Real-time WebSocket notify the target user
+        sender_prof, _ = Profile.objects.get_or_create(user=request.user)
+        notify_user_channel(
+            target_user.id,
+            "friend_request_received",
+            {
+                "request_id": friendship.id,
+                "sender": {
+                    "id": request.user.id,
+                    "username": request.user.username,
+                    "nickname": sender_prof.nickname,
+                    "avatar": sender_prof.get_avatar_url(request),
+                },
+            },
+        )
+
+        return Response(
+            {
+                "message": "Solicitação de amizade enviada com sucesso",
+                "status": "pending",
+                "friendship_id": friendship.id,
+            },
+            status=status.HTTP_201_CREATED,
+        )
+
+
+class FriendRespondView(APIView):
+    authentication_classes = [TokenAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, request_id):
+        action = (request.data.get("action") or "").lower().strip()
+        if action not in ["accept", "reject"]:
+            return Response(
+                {"error": "Ação inválida. Use 'accept' ou 'reject'"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            friendship = Friendship.objects.get(
+                id=request_id,
+                receiver=request.user,
+                status="pending",
+            )
+        except Friendship.DoesNotExist:
+            return Response(
+                {"error": "Solicitação não encontrada"},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        if action == "accept":
+            friendship.status = "accepted"
+            friendship.save()
+
+            # Real-time notify sender
+            notify_user_channel(
+                friendship.sender.id,
+                "friend_accepted",
+                {
+                    "friendship_id": friendship.id,
+                    "user_id": request.user.id,
+                    "username": request.user.username,
+                },
+            )
+
+            return Response(
+                {
+                    "message": "Solicitação de amizade aceita",
+                    "status": "accepted",
+                },
+                status=status.HTTP_200_OK,
+            )
+        else:
+            friendship.delete()
+            return Response(
+                {"message": "Solicitação de amizade recusada"},
+                status=status.HTTP_200_OK,
+            )
+
+
+class FriendDeleteView(APIView):
+    authentication_classes = [TokenAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    def delete(self, request, friend_id):
+        friendship = Friendship.objects.filter(
+            status="accepted"
+        ).filter(
+            (Q(sender=request.user) & Q(receiver_id=friend_id))
+            | (Q(sender_id=friend_id) & Q(receiver=request.user))
+        ).first()
+
+        if not friendship:
+            return Response(
+                {"error": "Amizade não encontrada"},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        friendship.delete()
+
+        # Real-time notify other user
+        notify_user_channel(
+            friend_id,
+            "friend_removed",
+            {"user_id": request.user.id},
+        )
+
+        return Response(
+            {"message": "Amizade desfeita com sucesso"},
+            status=status.HTTP_200_OK,
+        )
+
