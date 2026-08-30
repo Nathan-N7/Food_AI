@@ -1,11 +1,12 @@
+```bash
 #!/usr/bin/env bash
 
 set -euo pipefail
 
-PROJECT_DIR="/goinfre/uviana-b/Food_AI"
-VENV_DIR="/goinfre/uviana-b/.venvs/food_ai"
-
-cd "$PROJECT_DIR"
+# Diretório onde este script está localizado.
+# Assim o projeto pode ser movido para qualquer lugar.
+PROJECT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+VENV_DIR="$PROJECT_DIR/.env"
 
 info() {
     printf '\033[1;34m[INFO]\033[0m %s\n' "$*"
@@ -51,8 +52,6 @@ check_requirements() {
 
 setup_python() {
     info "Preparando ambiente virtual Python..."
-
-    mkdir -p "/goinfre/uviana-b/.venvs"
 
     if [[ ! -d "$VENV_DIR" ]]; then
         python3 -m venv "$VENV_DIR"
@@ -146,3 +145,4 @@ setup_python
 setup_frontend
 setup_env
 finish
+```

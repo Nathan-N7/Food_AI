@@ -26,17 +26,6 @@ function ProtectedRoute({ children }) {
   return children
 }
 
-function GeneratePlaceholder() {
-  return (
-    <main>
-      <h1>Food AI</h1>
-      <h2>Generate</h2>
-
-      <p>Usuário autenticado.</p>
-    </main>
-  )
-}
-
 function App() {
   return (
     <Routes>
@@ -51,14 +40,18 @@ function App() {
       />
 
       <Route
-        path="/generate"
+        path="/register"
+        element={<Register />}
+      />
+
+      <Route
+        path="/dashboard"
         element={
           <ProtectedRoute>
-            <Generate />
+            <Dashboard />
           </ProtectedRoute>
         }
       />
-
 
       <Route
         path="/profile"
@@ -68,7 +61,6 @@ function App() {
           </ProtectedRoute>
         }
       />
-
 
       <Route
         path="/profile/:id"
@@ -88,23 +80,33 @@ function App() {
         }
       />
 
+      <Route
+        path="/generate"
+        element={
+          <ProtectedRoute>
+            <Generate />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/history"
+        element={
+          <ProtectedRoute>
+            <History />
+          </ProtectedRoute>
+        }
+      />
 
       <Route
         path="/privacy"
-        element={
-          <Privacy />
-        }
+        element={<Privacy />}
       />
-
 
       <Route
         path="/terms"
-        element={
-          <Terms />
-        }
+        element={<Terms />}
       />
-
-
     </Routes>
   )
 }

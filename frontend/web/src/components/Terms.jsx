@@ -1,5 +1,8 @@
+import Header from "./Header"
 const Terms = () => {
   return (
+    <div>
+      <Header/>
     <main style={{ maxWidth: '800px', margin: '0 auto', padding: '40px 20px', textAlign: 'left' }}>
       <h1>Terms of Service</h1>
       <p style={{ color: '#888', marginBottom: '32px' }}>
@@ -176,6 +179,7 @@ const Terms = () => {
         </p>
       </section>
     </main>
+    </div>
   )
 }
 

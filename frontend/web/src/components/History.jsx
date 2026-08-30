@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import Header from './Header'
 
 const API_URL = '/api'
 
@@ -92,25 +93,36 @@ const History = () => {
 
   if (loading) {
     return (
-      <main>
-        <h1>Food AI</h1>
-        <p>Carregando histórico...</p>
-      </main>
+      <>
+        <Header />
+        <main style={{ maxWidth: '850px', margin: '2rem auto', padding: '0 1.25rem 3rem' }}>
+          <p>Carregando histórico...</p>
+        </main>
+      </>
     )
   }
 
   return (
-    <main>
-      <h1>Food AI</h1>
+    <>
+      <Header />
+      <main style={{ maxWidth: '850px', margin: '2rem auto', padding: '0 1.25rem 3rem', textAlign: 'left' }}>
+        <button
+          type="button"
+          style={{
+            background: 'transparent',
+            border: '1px solid var(--border)',
+            color: 'var(--text)',
+            padding: '6px 14px',
+            borderRadius: '6px',
+            cursor: 'pointer',
+            marginBottom: '1rem',
+          }}
+          onClick={handleBack}
+        >
+          ← Voltar para geração
+        </button>
 
-      <button
-        type="button"
-        onClick={handleBack}
-      >
-        Voltar para geração
-      </button>
-
-      <h2>Histórico</h2>
+        <h2 style={{ fontSize: '1.8rem', color: 'var(--text-h)', margin: '0 0 1rem' }}>Histórico de Gerações</h2>
 
       {message && <p>{message}</p>}
 
@@ -180,6 +192,7 @@ const History = () => {
         </article>
       ))}
     </main>
+    </>
   )
 }
 

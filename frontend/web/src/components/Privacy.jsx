@@ -1,5 +1,8 @@
+import Header from "./Header"
 const Privacy = () => {
   return (
+    <div>
+      <Header/>
     <main style={{ maxWidth: '800px', margin: '0 auto', padding: '40px 20px', textAlign: 'left' }}>
       <h1>Privacy Policy</h1>
       <p style={{ color: '#888', marginBottom: '32px' }}>
@@ -185,6 +188,7 @@ const Privacy = () => {
         </p>
       </section>
     </main>
+    </div>
   )
 }
 

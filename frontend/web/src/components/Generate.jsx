@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import Header from './Header'
 
 const API_URL = '/api'
 
@@ -26,12 +27,6 @@ const Generate = () => {
   const [generating, setGenerating] = useState(false)
   const [preview, setPreview] = useState(null)
   const [progress, setProgress] = useState(0)
-
-  function handleLogout() {
-    localStorage.removeItem('token')
-    localStorage.removeItem('user')
-    navigate('/login')
-  }
 
   async function handleGenerate(event) {
     event.preventDefault()
@@ -93,18 +88,10 @@ const Generate = () => {
   }
 
   return (
-    <main>
-      <h1>Food AI</h1>
-
-      <p>
-        Logado como: <strong>{user?.username}</strong>
-      </p>
-
-      <button type="button" onClick={handleLogout}>
-        Sair
-      </button>
-
-      <h2>Gerar imagem</h2>
+    <>
+      <Header user={user} />
+      <main style={{ maxWidth: '700px', margin: '2rem auto', padding: '0 1.25rem 3rem' }}>
+        <h2>Gerar imagem</h2>
 
       {preview && (
         <div>
@@ -175,7 +162,8 @@ const Generate = () => {
         </section>
       )}
       <button onClick={() => navigate('/history')}>Histórico</button>
-    </main>
+      </main>
+    </>
   )
 }
 
