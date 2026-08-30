@@ -1,9 +1,12 @@
+
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 
 const API_URL = '/api'
 
 const Login = () => {
+  const [useremail, setUseremail] = useState('')
+  const [usernickname, setUsernickname] = useState('')
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
   const [message, setMessage] = useState('')
@@ -26,8 +29,9 @@ const Login = () => {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            username,
+            useremail,
             password,
+           
           }),
         },
       )
@@ -40,13 +44,17 @@ const Login = () => {
       }
 
       localStorage.setItem('token', data.token)
+
       localStorage.setItem(
         'user',
         JSON.stringify(data.user),
       )
 
       setPassword('')
-      setMessage(`Login realizado: ${data.user.username}`)
+
+      setMessage(
+        `Login realizado: ${data.user.nickname || data.user.username}`,
+      )
 
       navigate('/dashboard')
     } catch (error) {
@@ -64,22 +72,25 @@ const Login = () => {
     <main>
       <section>
         <h1>Food AI</h1>
+
         <h2>Login</h2>
 
         <form onSubmit={handleLogin}>
+          
+
           <div>
-            <label htmlFor="username">
-              Usuário
+            <label htmlFor="email">
+              Email
             </label>
 
             <br />
 
             <input
-              id="username"
-              type="text"
-              value={username}
+              id="email"
+              type="email"
+              value={useremail}
               onChange={(event) => {
-                setUsername(event.target.value)
+                setUseremail(event.target.value)
               }}
               required
             />
@@ -141,3 +152,4 @@ const Login = () => {
 }
 
 export default Login
+

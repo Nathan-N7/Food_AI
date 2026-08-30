@@ -286,21 +286,31 @@ class RegisterView(APIView):
             request.data.get("password") or ""
         )
 
-        if not username or not password:
+        nickname = (
+            request.data.get("nickname")
+            or request.data.get("usernickname")
+            or ""
+        ).strip()
+
+        if not email or not password or not username:
             return Response(
                 {
                     "error": (
-                        "username e password são obrigatórios"
+                        "email, username e password são obrigatórios"
                     )
                 },
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        if User.objects.filter(
-            username=username
-        ).exists():
+        if User.objects.filter(username=username).exists():
             return Response(
                 {"error": "username já existe"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if User.objects.filter(email=email).exists():
+            return Response(
+                {"error": "email já existe"},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
@@ -322,11 +332,17 @@ class RegisterView(APIView):
             password=password,
         )
 
+        Profile.objects.create(
+            user=user,
+            nickname=nickname,
+        )
+
         return Response(
             {
                 "id": user.id,
                 "username": user.username,
                 "email": user.email,
+                "nickname": nickname,
             },
             status=status.HTTP_201_CREATED,
         )
@@ -337,29 +353,43 @@ class LoginView(APIView):
     permission_classes = [AllowAny]
 
     def post(self, request):
-        username = (
-            request.data.get("username") or ""
+        identifier = (
+            request.data.get("username")
+            or request.data.get("useremail")
+            or request.data.get("email")
+            or ""
         ).strip()
 
         password = (
             request.data.get("password") or ""
         )
 
-        if not username or not password:
+        if not identifier or not password:
             return Response(
                 {
                     "error": (
-                        "username e password são obrigatórios"
+                        "username/email e password são obrigatórios"
                     )
                 },
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
+        # Tenta autenticar pelo username
         user = authenticate(
             request=request,
-            username=username,
+            username=identifier,
             password=password,
         )
+
+        # Se falhar, tenta buscar pelo email
+        if user is None:
+            user_by_email = User.objects.filter(email=identifier).first()
+            if user_by_email:
+                user = authenticate(
+                    request=request,
+                    username=user_by_email.username,
+                    password=password,
+                )
 
         if user is None:
             return Response(
@@ -371,6 +401,8 @@ class LoginView(APIView):
             user=user
         )
 
+        profile, _ = Profile.objects.get_or_create(user=user)
+
         return Response(
             {
                 "token": token.key,
@@ -378,6 +410,7 @@ class LoginView(APIView):
                     "id": user.id,
                     "username": user.username,
                     "email": user.email,
+                    "nickname": profile.nickname,
                 },
             },
             status=status.HTTP_200_OK,

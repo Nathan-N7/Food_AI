@@ -7,6 +7,7 @@ const Register = () => {
   const navigate = useNavigate()
 
   const [username, setUsername] = useState('')
+  const [usernickname, setUserNickname] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [message, setMessage] = useState('')
@@ -30,6 +31,7 @@ const Register = () => {
             username,
             email,
             password,
+            usernickname
           }),
         },
       )
@@ -72,6 +74,24 @@ const Register = () => {
             value={username}
             onChange={(event) =>
               setUsername(event.target.value)
+            }
+            required
+          />
+        </div>
+
+         <div>
+          <label htmlFor="username">
+            NickName
+          </label>
+
+          <br />
+
+          <input
+            id="usernickname"
+            type="text"
+            value={usernickname}
+            onChange={(event) =>
+              setUserNickname(event.target.value)
             }
             required
           />
