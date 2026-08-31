@@ -25,6 +25,7 @@ from .services.flux_image_generate import flux_image_generate
 from .services.images_utils import file_to_data_url
 from .services.rtdetr import RtFilter
 from .services.save_image import save_image_from_url
+from rest_framework.throttling import UserRateThrottle
 
 
 User = get_user_model()
@@ -118,6 +119,7 @@ class RegenerateImageView(APIView):
 class validationFoodView(APIView):
     authentication_classes = [TokenAuthentication]
     permission_classes = [IsAuthenticated]
+    throttle_classes = [UserRateThrottle]
 
     def post(self, request, *args, **kwargs):
         file_image = request.FILES.get("image")
