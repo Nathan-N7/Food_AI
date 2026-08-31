@@ -1,6 +1,7 @@
 
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import './Login.css'
 
 const API_URL = '/api'
 
@@ -69,62 +70,68 @@ const Login = () => {
   }
 
   return (
-    <main>
-      <section>
-        <h1>Food AI</h1>
+    <main className="login-container">
+      <section className="login-card">
+        <div className="login-header">
+          <img src="/cerebro.png" alt="Cérebro AI" className="login-logo-brain" />
+          <h1>Food AI</h1>
+        </div>
 
         <h2>Login</h2>
 
-        <form onSubmit={handleLogin}>
-          
-
-          <div>
-            <label htmlFor="email">
-              Email
-            </label>
-
-            <br />
-
-            <input
-              id="email"
-              type="email"
-              value={useremail}
-              onChange={(event) => {
-                setUseremail(event.target.value)
-              }}
-              required
-            />
+        <form onSubmit={handleLogin} className="login-form">  
+          <div className="form-content-row">
+            <div className="input-column">
+              <div className="input-group">
+                <label htmlFor="email">
+                  Email
+                </label>
+                <br />
+                <input
+                  id="email"
+                  type="email"
+                  value={useremail}
+                  onChange={(event) => {
+                    setUseremail(event.target.value)
+                  }}
+                  required
+                />
+              </div>
+              <div className="input-group">
+                <label htmlFor="password">
+                  Senha
+                </label>
+                <br />
+                <input
+                  id="password"
+                  type="password"
+                  value={password}
+                  onChange={(event) => {
+                    setPassword(event.target.value)
+                  }}
+                  required
+                />
+              </div>
+            </div>
+            
+            <div className="hat-badge-container">
+              <img src="/chapeu.png" alt="Chapéu Chef" className="login-logo" />
+            </div>
           </div>
 
-          <div>
-            <label htmlFor="password">
-              Senha
-            </label>
-
-            <br />
-
-            <input
-              id="password"
-              type="password"
-              value={password}
-              onChange={(event) => {
-                setPassword(event.target.value)
-              }}
-              required
-            />
-          </div>
 
           <button
             type="submit"
+            className="btn-submit"
             disabled={loading}
           >
             {loading ? 'Entrando...' : 'Entrar'}
           </button>
         </form>
 
-        {message && <p>{message}</p>}
+        {message && <p className="login-message">{message}</p>}
 
-        <div>
+        <div className="login-footer">
           <button
             type="button"
             onClick={() => navigate('/register')}
