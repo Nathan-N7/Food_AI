@@ -44,9 +44,9 @@ const Login = () => {
         return
       }
 
-      localStorage.setItem('token', data.token)
+      sessionStorage.setItem('token', data.token)
 
-      localStorage.setItem(
+      sessionStorage.setItem(
         'user',
         JSON.stringify(data.user),
       )

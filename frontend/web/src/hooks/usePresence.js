@@ -10,7 +10,7 @@ export function usePresence() {
   const retryCountRef = useRef(0)
 
   const connect = useCallback(() => {
-    const token = localStorage.getItem('token')
+    const token = sessionStorage.getItem('token')
     if (!token) {
       setIsConnected(false)
       return
@@ -75,7 +75,7 @@ export function usePresence() {
         if (pingIntervalRef.current) clearInterval(pingIntervalRef.current)
 
         // Exponential backoff reconnect
-        if (localStorage.getItem('token') && !e.wasClean) {
+        if (sessionStorage.getItem('token') && !e.wasClean) {
           const timeout = Math.min(1000 * 2 ** retryCountRef.current, 15000)
           retryCountRef.current += 1
           reconnectTimeoutRef.current = setTimeout(connect, timeout)

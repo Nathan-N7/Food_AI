@@ -13,7 +13,7 @@ const History = () => {
 
   useEffect(() => {
     async function loadHistory() {
-      const token = localStorage.getItem('token')
+      const token = sessionStorage.getItem('token')
 
       if (!token) {
         navigate('/login')
@@ -58,7 +58,7 @@ const History = () => {
   }
 
   async function handleDelete(generationId) {
-    const token = localStorage.getItem('token')
+    const token = sessionStorage.getItem('token')
 
     if (!token) {
       setMessage('Faça login novamente')

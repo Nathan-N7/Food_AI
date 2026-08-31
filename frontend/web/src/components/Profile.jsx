@@ -33,7 +33,7 @@ const Profile = () => {
   }, [])
 
   async function fetchProfile() {
-    const token = localStorage.getItem('token')
+    const token = sessionStorage.getItem('token')
     if (!token) {
       navigate('/login')
       return
@@ -115,7 +115,7 @@ const Profile = () => {
       return
     }
 
-    const token = localStorage.getItem('token')
+    const token = sessionStorage.getItem('token')
     if (!token) {
       navigate('/login')
       return
@@ -166,15 +166,15 @@ const Profile = () => {
       setNewPassword('')
       setConfirmPassword('')
 
-      // Update localStorage user so Header reflects changes instantly
-      const storedUser = localStorage.getItem('user')
+      // Update sessionStorage user so Header reflects changes instantly
+      const storedUser = sessionStorage.getItem('user')
       if (storedUser) {
         try {
           const parsed = JSON.parse(storedUser)
           parsed.nickname = data.nickname
           parsed.email = data.email
           parsed.avatar = data.avatar
-          localStorage.setItem('user', JSON.stringify(parsed))
+          sessionStorage.setItem('user', JSON.stringify(parsed))
         } catch {
           // ignore
         }

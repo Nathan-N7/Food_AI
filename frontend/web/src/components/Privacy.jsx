@@ -162,7 +162,7 @@ const Privacy = () => {
       <section style={{ marginBottom: '32px' }}>
         <h2>8. Cookies and Local Storage</h2>
         <p>
-          Food AI uses browser <strong>localStorage</strong> to store your
+          Food AI uses browser <strong>sessionStorage</strong> to store your
           authentication token and basic user information (username and ID).
           This data is stored only on your device and is cleared when you log out.
           We do not use tracking cookies or third-party analytics.

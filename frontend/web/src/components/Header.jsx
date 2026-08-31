@@ -9,14 +9,14 @@ const Header = ({ user: customUser, avatarUrl = null }) => {
   const navigate = useNavigate()
   const location = useLocation()
 
-  // Sincroniza com localStorage se não foi passado via prop
+  // Sincroniza com sessionStorage se não foi passado via prop
   useEffect(() => {
     if (customUser) {
       setCurrentUser(customUser)
       return
     }
 
-    const saved = localStorage.getItem('user')
+    const saved = sessionStorage.getItem('user')
     if (saved) {
       try {
         setCurrentUser(JSON.parse(saved))
@@ -43,8 +43,8 @@ const Header = ({ user: customUser, avatarUrl = null }) => {
   }, [])
 
   function handleLogout() {
-    localStorage.removeItem('token')
-    localStorage.removeItem('user')
+    sessionStorage.removeItem('token')
+    sessionStorage.removeItem('user')
     setIsMenuOpen(false)
     navigate('/login')
   }

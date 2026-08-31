@@ -8,7 +8,7 @@ const Generate = () => {
   const navigate = useNavigate()
 
   const [user] = useState(() => {
-    const savedUser = localStorage.getItem('user')
+    const savedUser = sessionStorage.getItem('user')
 
     if (!savedUser) {
       return null
@@ -57,7 +57,7 @@ const Generate = () => {
   async function handleGenerate(event) {
     event.preventDefault()
 
-    const token = localStorage.getItem('token')
+    const token = sessionStorage.getItem('token')
 
     if (!token) {
       setMessage('Usuário não autenticado')

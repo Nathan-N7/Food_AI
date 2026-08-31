@@ -21,7 +21,7 @@ const UserProfile = () => {
   }, [id])
 
   async function fetchUserProfile() {
-    const token = localStorage.getItem('token')
+    const token = sessionStorage.getItem('token')
     if (!token) {
       navigate('/login')
       return
@@ -54,7 +54,7 @@ const UserProfile = () => {
   }
 
   async function handleSendFriendRequest() {
-    const token = localStorage.getItem('token')
+    const token = sessionStorage.getItem('token')
     if (!token) return
 
     try {
@@ -85,7 +85,7 @@ const UserProfile = () => {
 
   async function handleRespondFriendRequest(action) {
     if (!userData?.friendship_id) return
-    const token = localStorage.getItem('token')
+    const token = sessionStorage.getItem('token')
     if (!token) return
 
     try {
@@ -114,7 +114,7 @@ const UserProfile = () => {
 
   async function handleRemoveFriend() {
     if (!confirm('Deseja realmente desfazer a amizade?')) return
-    const token = localStorage.getItem('token')
+    const token = sessionStorage.getItem('token')
     if (!token) return
 
     try {

@@ -4,7 +4,7 @@ import Header from './Header'
 
 const Dashboard = () => {
   const [user] = useState(() => {
-    const savedUser = localStorage.getItem('user')
+    const savedUser = sessionStorage.getItem('user')
     if (!savedUser) return null
     try {
       return JSON.parse(savedUser)

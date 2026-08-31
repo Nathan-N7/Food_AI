@@ -19,7 +19,7 @@ const Friends = () => {
   const [searchLoading, setSearchLoading] = useState(false)
   const [actionLoading, setActionLoading] = useState({})
 
-  const token = localStorage.getItem('token')
+  const token = sessionStorage.getItem('token')
 
   const fetchFriends = useCallback(async () => {
     if (!token) {
