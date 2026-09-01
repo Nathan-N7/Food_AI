@@ -1,190 +1,236 @@
 import { useState, useEffect } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
-import './Social.css'
+import { useParams, useNavigate } from 'react-router-dom'
+import { 
+  Box, Button, Card, CardContent, TextField, Typography, Container, 
+  AppBar, Toolbar, Avatar, CircularProgress, Divider, Stack 
+} from '@mui/material'
+import ArrowBackIcon from '@mui/icons-material/ArrowBack'
+import EditIcon from '@mui/icons-material/Edit'
+import SaveIcon from '@mui/icons-material/Save'
+import CancelIcon from '@mui/icons-material/Cancel'
+import PersonAddIcon from '@mui/icons-material/PersonAdd'
+import ChatIcon from '@mui/icons-material/Chat'
+import AccessTimeIcon from '@mui/icons-material/AccessTime'
+import SecurityIcon from '@mui/icons-material/Security'
 
 const API_URL = '/api'
 
 const Profile = () => {
-  const navigate = useNavigate()
   const { userId } = useParams()
+  const navigate = useNavigate()
+
   const [profile, setProfile] = useState(null)
   const [loading, setLoading] = useState(true)
-  const [editing, setEditing] = useState(false)
   const [message, setMessage] = useState('')
-  const [messageType, setMessageType] = useState('')
+  const [messageType, setMessageType] = useState('success')
 
-  // Edit form state
+  const [isOwnProfile, setIsOwnProfile] = useState(false)
+  const [editing, setEditing] = useState(false)
+  const [saving, setSaving] = useState(false)
+
   const [displayName, setDisplayName] = useState('')
   const [bio, setBio] = useState('')
   const [avatarFile, setAvatarFile] = useState(null)
   const [avatarPreview, setAvatarPreview] = useState(null)
-  const [saving, setSaving] = useState(false)
 
-  // 2FA states
   const [setup2fa, setSetup2fa] = useState(false)
   const [qrCode, setQrCode] = useState(null)
-  const [totpCode, setTotpCode] = useState("")
-  const [password, setPassword] = useState("")
+  const [totpCode, setTotpCode] = useState('')
   const [disable2fa, setDisable2fa] = useState(false)
-
-  const token = localStorage.getItem('token')
-  const currentUser = JSON.parse(localStorage.getItem('user') || '{}')
-  const isOwnProfile = !userId || String(userId) === String(currentUser.id)
+  const [password, setPassword] = useState('')
 
   useEffect(() => {
     fetchProfile()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId])
 
   async function fetchProfile() {
-    setLoading(true)
-    try {
-      const url = isOwnProfile
-        ? `${API_URL}/profile/`
-        : `${API_URL}/profile/${userId}/`
+    const token = localStorage.getItem('token')
+    if (!token) {
+      navigate('/login')
+      return
+    }
 
-      const res = await fetch(url, {
+    try {
+      const endpoint = userId ? `${API_URL}/profile/${userId}/` : `${API_URL}/profile/`
+      const response = await fetch(endpoint, {
         headers: { Authorization: `Token ${token}` },
       })
 
-      if (!res.ok) throw new Error('Erro ao carregar perfil')
+      const data = await response.json()
+      if (!response.ok) {
+        showMessage(data.error || 'Erro ao carregar perfil', 'error')
+        return
+      }
 
-      const data = await res.json()
       setProfile(data)
+      setIsOwnProfile(!userId || String(data.id) === String(JSON.parse(localStorage.getItem('user') || '{}').id))
+
       setDisplayName(data.display_name || '')
       setBio(data.bio || '')
-    } catch (err) {
-      showMessage(err.message, 'error')
+    } catch (error) {
+      showMessage('Não foi possível conectar ao backend', 'error')
     } finally {
       setLoading(false)
     }
   }
 
-  function showMessage(text, type = 'success') {
-    setMessage(text)
+  function showMessage(msg, type = 'success') {
+    setMessage(msg)
     setMessageType(type)
-    setTimeout(() => setMessage(''), 4000)
+    setTimeout(() => setMessage(''), 5000)
+  }
+
+  
+  async function handleAcceptFriend() {
+    const token = localStorage.getItem('token')
+    try {
+      const res = await fetch(`${API_URL}/friends/accept/${profile.friendship_id}/`, {
+        method: 'POST',
+        headers: { Authorization: `Token ${token}` },
+      })
+      if (!res.ok) throw new Error('Erro ao aceitar pedido')
+      showMessage('Pedido aceito com sucesso!', 'success')
+      fetchProfile()
+    } catch (err) {
+      showMessage(err.message, 'error')
+    }
+  }
+
+  async function handleRejectFriend() {
+    const token = localStorage.getItem('token')
+    try {
+      const res = await fetch(`${API_URL}/friends/reject/${profile.friendship_id}/`, {
+        method: 'POST',
+        headers: { Authorization: `Token ${token}` },
+      })
+      if (!res.ok) throw new Error('Erro ao recusar pedido')
+      showMessage('Pedido recusado.', 'info')
+      fetchProfile()
+    } catch (err) {
+      showMessage(err.message, 'error')
+    }
+  }
+
+  async function handleAddFriend() {
+    const token = localStorage.getItem('token')
+    try {
+      const res = await fetch(`${API_URL}/friends/request/`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Token ${token}`,
+        },
+        body: JSON.stringify({ to_user_id: parseInt(userId, 10) }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error)
+      
+      showMessage('Pedido de amizade enviado!')
+      fetchProfile()
+    } catch (err) {
+      showMessage(err.message, 'error')
+    }
   }
 
   function handleAvatarChange(e) {
     const file = e.target.files[0]
     if (file) {
       setAvatarFile(file)
-      const reader = new FileReader()
-      reader.onload = (ev) => setAvatarPreview(ev.target.result)
-      reader.readAsDataURL(file)
+      setAvatarPreview(URL.createObjectURL(file))
     }
   }
 
   async function handleSaveProfile(e) {
     e.preventDefault()
     setSaving(true)
+    const token = localStorage.getItem('token')
+
+    const formData = new FormData()
+    formData.append('display_name', displayName)
+    formData.append('bio', bio)
+    if (avatarFile) formData.append('avatar', avatarFile)
 
     try {
-      const formData = new FormData()
-      formData.append('display_name', displayName)
-      formData.append('bio', bio)
-      if (avatarFile) {
-        formData.append('avatar', avatarFile)
-      }
-
       const res = await fetch(`${API_URL}/profile/`, {
         method: 'PUT',
         headers: { Authorization: `Token ${token}` },
         body: formData,
       })
 
-      if (!res.ok) throw new Error('Erro ao salvar perfil')
-
       const data = await res.json()
+      if (!res.ok) throw new Error(data.error)
+
       setProfile(data)
       setEditing(false)
-      setAvatarFile(null)
-      setAvatarPreview(null)
-      showMessage('Perfil atualizado com sucesso!', 'success')
+      showMessage('Perfil atualizado com sucesso!')
     } catch (err) {
-      showMessage(err.message, 'error')
+      showMessage(err.message || 'Erro ao salvar', 'error')
     } finally {
       setSaving(false)
     }
   }
 
-  async function handleAddFriend() {
+  async function handleSetup2FA() {
+    const token = localStorage.getItem('token')
     try {
-      const res = await fetch(`${API_URL}/friends/request/`, {
+      const res = await fetch(`${API_URL}/auth/2fa/setup/`, {
         method: 'POST',
-        headers: {
-          Authorization: `Token ${token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ to_user_id: userId }),
+        headers: { Authorization: `Token ${token}` }
       })
-
       const data = await res.json()
       if (!res.ok) throw new Error(data.error)
-
-      showMessage(data.message, 'success')
-      fetchProfile()
+      setQrCode(data.qr_code_url)
+      setSetup2fa(true)
     } catch (err) {
       showMessage(err.message, 'error')
     }
   }
 
-  async function handleSetup2FA() {
-    try {
-      const res = await fetch(`${API_URL}/auth/2fa/setup/`, {
-        headers: { Authorization: `Token ${token}` },
-      })
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.error)
-      setQrCode(data.qr_code)
-      setSetup2fa(true)
-    } catch (err) {
-      showMessage(err.message, "error")
-    }
-  }
-
   async function handleVerify2FA(e) {
     e.preventDefault()
+    const token = localStorage.getItem('token')
     try {
       const res = await fetch(`${API_URL}/auth/2fa/verify/`, {
-        method: "POST",
+        method: 'POST',
         headers: {
-          Authorization: `Token ${token}`,
-          "Content-Type": "application/json",
+          'Content-Type': 'application/json',
+          Authorization: `Token ${token}`
         },
-        body: JSON.stringify({ totp_code: totpCode }),
+        body: JSON.stringify({ totp_code: totpCode })
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error)
-      showMessage(data.status, "success")
+      setProfile({...profile, two_factor_enabled: true})
       setSetup2fa(false)
-      setTotpCode("")
-      fetchProfile()
+      setTotpCode('')
+      showMessage('2FA enabled successfully')
     } catch (err) {
-      showMessage(err.message, "error")
+      showMessage(err.message, 'error')
     }
   }
 
   async function handleDisable2FA(e) {
     e.preventDefault()
+    const token = localStorage.getItem('token')
     try {
       const res = await fetch(`${API_URL}/auth/2fa/disable/`, {
-        method: "POST",
+        method: 'POST',
         headers: {
-          Authorization: `Token ${token}`,
-          "Content-Type": "application/json",
+          'Content-Type': 'application/json',
+          Authorization: `Token ${token}`
         },
-        body: JSON.stringify({ password, totp_code: totpCode }),
+        body: JSON.stringify({ password, totp_code: totpCode })
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error)
-      showMessage(data.status, "success")
+      setProfile({...profile, two_factor_enabled: false})
       setDisable2fa(false)
-      setPassword("")
-      setTotpCode("")
-      fetchProfile()
+      setPassword('')
+      setTotpCode('')
+      showMessage('2FA disabled successfully')
     } catch (err) {
-      showMessage(err.message, "error")
+      showMessage(err.message, 'error')
     }
   }
 
@@ -192,220 +238,197 @@ const Profile = () => {
     return (name || '?').charAt(0).toUpperCase()
   }
 
-  function renderAvatar(src, name, large = false) {
-    const cls = large ? 'avatar avatar-lg' : 'avatar'
-    const plcCls = large
-      ? 'avatar avatar-lg avatar-placeholder'
-      : 'avatar avatar-placeholder'
-
-    if (src) {
-      return <img src={src} alt={name} className={cls} />
-    }
-    return (
-      <div className={plcCls}>
-        {getInitials(name)}
-      </div>
-    )
-  }
-
   if (loading) {
     return (
-      <div className="social-page">
-        <header className="social-header">
-          <h1>Perfil</h1>
-          <button className="back-btn" onClick={() => navigate('/dashboard')}>
-            ← Voltar
-          </button>
-        </header>
-        <div className="loading-spinner" />
-      </div>
+      <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', backgroundColor: 'background.default' }}>
+        <CircularProgress color="primary" />
+        <Typography variant="h6" sx={{ mt: 2, color: 'text.secondary' }}>Carregando perfil...</Typography>
+      </Box>
     )
   }
 
   return (
-    <div className="social-page">
-      <header className="social-header">
-        <h1>Perfil</h1>
-        <button className="back-btn" onClick={() => navigate('/dashboard')}>
-          ← Voltar
-        </button>
-      </header>
+    <Box sx={{ minHeight: '100vh', backgroundColor: 'background.default' }}>
+      <AppBar position="static" color="transparent" elevation={0} sx={{ borderBottom: '1px solid rgba(255, 255, 255, 0.1)' }}>
+        <Toolbar>
+          <Typography variant="h6" component="div" sx={{ flexGrow: 1, color: 'primary.main', fontWeight: 'bold' }}>
+            Transcendence
+          </Typography>
+          <Button color="inherit" onClick={() => navigate('/dashboard')} startIcon={<ArrowBackIcon />}>
+            Voltar
+          </Button>
+        </Toolbar>
+      </AppBar>
 
-      {message && (
-        <div className={`status-message ${messageType}`}>
-          {message}
-        </div>
-      )}
+      <Container maxWidth="sm" sx={{ mt: 4, pb: 4 }}>
+        {message && (
+          <Typography align="center" sx={{ mb: 2, p: 1, borderRadius: 1, backgroundColor: messageType === 'error' ? 'error.dark' : 'success.dark', color: '#fff' }}>
+            {message}
+          </Typography>
+        )}
 
-      <div className="profile-container">
-        <div className="social-card profile-card">
-          {renderAvatar(
-            avatarPreview || profile?.avatar,
-            profile?.display_name || profile?.username,
-            true,
-          )}
+        <Card sx={{ p: 2 }}>
+          <CardContent sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+            
+            <Avatar 
+              src={avatarPreview || profile?.avatar} 
+              sx={{ width: 120, height: 120, mb: 2, fontSize: '3rem', backgroundColor: 'primary.main' }}
+            >
+              {!avatarPreview && !profile?.avatar && getInitials(profile?.display_name || profile?.username)}
+            </Avatar>
 
-          {!editing ? (
-            <>
-              <h2 className="display-name">
-                {profile?.display_name || profile?.username}
-              </h2>
-              <p className="username">@{profile?.username}</p>
-              <p className="email">{profile?.email}</p>
+            {!editing ? (
+              <>
+                <Typography variant="h4" gutterBottom>
+                  {profile?.display_name || profile?.username}
+                </Typography>
+                <Typography variant="subtitle1" color="text.secondary" gutterBottom>
+                  @{profile?.username}
+                </Typography>
+                <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                  {profile?.email}
+                </Typography>
 
-              {profile?.bio && (
-                <p className="bio">{profile.bio}</p>
-              )}
+                {profile?.bio && (
+                  <Typography variant="body1" align="center" sx={{ mb: 3, maxWidth: '80%' }}>
+                    {profile.bio}
+                  </Typography>
+                )}
 
-              {isOwnProfile ? (
-                <>
-                  <button
-                    className="btn-primary"
-                    onClick={() => setEditing(true)}
-                    style={{ marginBottom: "20px" }}
-                  >
-                    ✏️ Editar Perfil
-                  </button>
-
-                  <div className="two-factor-section" style={{ marginTop: "20px", padding: "15px", borderTop: "1px solid #ccc" }}>
-                    <h3>Two-Factor Authentication</h3>
-                    
-                    {profile?.two_factor_enabled ? (
-                      <>
-                        <p style={{ color: "green", fontWeight: "bold" }}>Enabled</p>
-                        {!disable2fa ? (
-                          <button className="btn-secondary" onClick={() => setDisable2fa(true)}>Disable 2FA</button>
-                        ) : (
-                          <form onSubmit={handleDisable2FA} style={{ marginTop: "10px" }}>
-                            <div>
-                              <input type="password" placeholder="Password" value={password} onChange={e => setPassword(e.target.value)} required />
-                            </div>
-                            <div style={{ marginTop: "10px" }}>
-                              <input type="text" placeholder="6-digit code" value={totpCode} onChange={e => setTotpCode(e.target.value)} maxLength={6} required />
-                            </div>
-                            <div style={{ display: "flex", gap: "10px", marginTop: "10px" }}>
-                              <button className="btn-primary" type="submit">Confirm Disable</button>
-                              <button className="btn-secondary" type="button" onClick={() => {setDisable2fa(false); setTotpCode(""); setPassword("")}}>Cancel</button>
-                            </div>
-                          </form>
-                        )}
-                      </>
-                    ) : (
-                      <>
-                        {!setup2fa ? (
-                          <button className="btn-primary" onClick={handleSetup2FA}>Enable 2FA</button>
-                        ) : (
-                          <div style={{ marginTop: "10px" }}>
-                            <p>Scan this QR code with your authenticator.</p>
-                            {qrCode && <img src={qrCode} alt="2FA QR Code" style={{ maxWidth: "200px" }} />}
-                            <form onSubmit={handleVerify2FA} style={{ marginTop: "10px" }}>
-                              <p>Enter the 6-digit code:</p>
-                              <input type="text" value={totpCode} onChange={e => setTotpCode(e.target.value)} maxLength={6} required />
-                              <div style={{ display: "flex", gap: "10px", marginTop: "10px" }}>
-                                <button className="btn-primary" type="submit">Confirm</button>
-                                <button className="btn-secondary" type="button" onClick={() => {setSetup2fa(false); setTotpCode(""); setQrCode(null)}}>Cancel</button>
-                              </div>
-                            </form>
-                          </div>
-                        )}
-                      </>
-                    )}
-                  </div>
-                </>
-              ) : (
-                <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', marginTop: '16px' }}>
-                  {profile?.friendship_status === 'accepted' ? (
-                    <button
-                      className="btn-primary"
-                      onClick={() => navigate(`/chat/${userId}`)}
+                {isOwnProfile ? (
+                  <Box sx={{ width: '100%' }}>
+                    <Button 
+                      variant="contained" 
+                      startIcon={<EditIcon />} 
+                      fullWidth 
+                      onClick={() => setEditing(true)}
+                      sx={{ mb: 3 }}
                     >
-                      💬 Enviar Mensagem
-                    </button>
-                  ) : profile?.friendship_status === 'pending' ? (
-                    <button className="btn-secondary" disabled>
-                      ⏳ Pedido Enviado
-                    </button>
-                  ) : (
-                    <button className="btn-primary" onClick={handleAddFriend}>
-                      ➕ Adicionar Amigo
-                    </button>
-                  )}
-                </div>
-              )}
-            </>
-          ) : (
-            <form className="profile-edit-form" onSubmit={handleSaveProfile}>
-              <div className="form-group">
-                <label>Avatar</label>
-                <div className="avatar-upload">
-                  {renderAvatar(
-                    avatarPreview || profile?.avatar,
-                    displayName || profile?.username,
-                    false,
-                  )}
-                  <label className="avatar-upload-label" htmlFor="avatar-input">
-                    📷 Escolher Foto
-                  </label>
-                  <input
-                    id="avatar-input"
-                    type="file"
-                    accept="image/*"
-                    onChange={handleAvatarChange}
-                  />
-                </div>
-              </div>
+                      Editar Perfil
+                    </Button>
 
-              <div className="form-group">
-                <label htmlFor="display-name">Nome de Exibição</label>
-                <input
-                  id="display-name"
-                  type="text"
+                    <Divider sx={{ my: 2 }} />
+                    
+                    <Box sx={{ mt: 2 }}>
+                      <Typography variant="h6" gutterBottom display="flex" alignItems="center" gap={1}>
+                        <SecurityIcon color="primary" /> Two-Factor Authentication
+                      </Typography>
+                      
+                      {profile?.two_factor_enabled ? (
+                        <Box>
+                          <Typography color="success.main" fontWeight="bold" sx={{ mb: 2 }}>Enabled</Typography>
+                          {!disable2fa ? (
+                            <Button variant="outlined" color="error" fullWidth onClick={() => setDisable2fa(true)}>Disable 2FA</Button>
+                          ) : (
+                            <Box component="form" onSubmit={handleDisable2FA} sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                              <TextField type="password" label="Password" fullWidth value={password} onChange={e => setPassword(e.target.value)} required />
+                              <TextField label="6-digit code" fullWidth value={totpCode} onChange={e => setTotpCode(e.target.value)} inputProps={{ maxLength: 6 }} required />
+                              <Stack direction="row" spacing={2}>
+                                <Button type="submit" variant="contained" color="primary" fullWidth>Confirm Disable</Button>
+                                <Button variant="outlined" color="secondary" fullWidth onClick={() => {setDisable2fa(false); setTotpCode(""); setPassword("")}}>Cancel</Button>
+                              </Stack>
+                            </Box>
+                          )}
+                        </Box>
+                      ) : (
+                        <Box>
+                          {!setup2fa ? (
+                            <Button variant="contained" color="primary" fullWidth onClick={handleSetup2FA}>Enable 2FA</Button>
+                          ) : (
+                            <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
+                              <Typography variant="body2" align="center">Scan this QR code with your authenticator app.</Typography>
+                              {qrCode && <img src={qrCode} alt="2FA QR Code" style={{ maxWidth: "200px", borderRadius: '8px', border: '2px solid white' }} />}
+                              <Box component="form" onSubmit={handleVerify2FA} sx={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 2 }}>
+                                <TextField label="Enter 6-digit code" fullWidth value={totpCode} onChange={e => setTotpCode(e.target.value)} inputProps={{ maxLength: 6 }} required />
+                                <Stack direction="row" spacing={2}>
+                                  <Button type="submit" variant="contained" color="primary" fullWidth>Confirm</Button>
+                                  <Button variant="outlined" color="secondary" fullWidth onClick={() => {setSetup2fa(false); setTotpCode(""); setQrCode(null)}}>Cancel</Button>
+                                </Stack>
+                              </Box>
+                            </Box>
+                          )}
+                        </Box>
+                      )}
+                    </Box>
+                  </Box>
+                ) : (
+                  <Stack direction="row" spacing={2} sx={{ mt: 2 }}>
+                    {profile?.friendship_status === 'accepted' ? (
+                      <Button variant="contained" color="primary" startIcon={<ChatIcon />} onClick={() => navigate(`/chat/${userId}`)}>
+                        Enviar Mensagem
+                      </Button>
+                    ) : profile?.friendship_status === 'pending' ? (
+                      profile?.friendship_sender_id === JSON.parse(localStorage.getItem('user') || '{}').id ? (
+                        <Button variant="outlined" color="secondary" disabled startIcon={<AccessTimeIcon />}>
+                          Pedido Enviado
+                        </Button>
+                      ) : (
+                        <Stack direction="row" spacing={1}>
+                          <Button variant="contained" color="success" onClick={handleAcceptFriend}>
+                            Aceitar
+                          </Button>
+                          <Button variant="outlined" color="error" onClick={handleRejectFriend}>
+                            Recusar
+                          </Button>
+                        </Stack>
+                      )
+                    ) : (
+                      <Button variant="contained" color="primary" startIcon={<PersonAddIcon />} onClick={handleAddFriend}>
+                        Adicionar Amigo
+                      </Button>
+                    )}
+                  </Stack>
+                )}
+              </>
+            ) : (
+              <Box component="form" onSubmit={handleSaveProfile} sx={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 3 }}>
+                <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1 }}>
+                  <Button variant="outlined" component="label" sx={{ textTransform: 'none' }}>
+                    Escolher Nova Foto
+                    <input type="file" hidden accept="image/*" onChange={handleAvatarChange} />
+                  </Button>
+                </Box>
+
+                <TextField
+                  label="Nome de Exibição"
+                  variant="outlined"
+                  fullWidth
                   value={displayName}
                   onChange={(e) => setDisplayName(e.target.value)}
-                  placeholder="Seu nome de exibição"
-                  maxLength={100}
+                  inputProps={{ maxLength: 100 }}
                 />
-              </div>
 
-              <div className="form-group">
-                <label htmlFor="bio-input">Bio</label>
-                <textarea
-                  id="bio-input"
+                <TextField
+                  label="Bio"
+                  variant="outlined"
+                  fullWidth
+                  multiline
+                  rows={3}
                   value={bio}
                   onChange={(e) => setBio(e.target.value)}
-                  placeholder="Conte um pouco sobre você..."
-                  maxLength={500}
-                  rows={3}
+                  inputProps={{ maxLength: 500 }}
                 />
-              </div>
 
-              <div style={{ display: 'flex', gap: '12px' }}>
-                <button
-                  type="submit"
-                  className="btn-primary"
-                  disabled={saving}
-                >
-                  {saving ? 'Salvando...' : '💾 Salvar'}
-                </button>
-                <button
-                  type="button"
-                  className="btn-secondary"
-                  onClick={() => {
+                <Stack direction="row" spacing={2}>
+                  <Button type="submit" variant="contained" color="primary" startIcon={<SaveIcon />} fullWidth disabled={saving}>
+                    {saving ? 'Salvando...' : 'Salvar'}
+                  </Button>
+                  <Button variant="outlined" color="secondary" startIcon={<CancelIcon />} fullWidth onClick={() => {
                     setEditing(false)
                     setAvatarFile(null)
                     setAvatarPreview(null)
                     setDisplayName(profile?.display_name || '')
                     setBio(profile?.bio || '')
-                  }}
-                >
-                  Cancelar
-                </button>
-              </div>
-            </form>
-          )}
-        </div>
-      </div>
-    </div>
+                  }}>
+                    Cancelar
+                  </Button>
+                </Stack>
+              </Box>
+            )}
+          </CardContent>
+        </Card>
+      </Container>
+    </Box>
   )
 }
 

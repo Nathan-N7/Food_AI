@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
+import { Box, Button, Card, CardContent, TextField, Typography, Container } from '@mui/material'
 
 const API_URL = '/api'
 
@@ -104,68 +105,94 @@ const Login = () => {
   }
 
   return (
-    <main>
-      <section>
-        <h1>Food AI</h1>
-        <h2>Login</h2>
+    <Container maxWidth="xs" sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '100vh' }}>
+      <Card sx={{ width: '100%', p: 2 }}>
+        <CardContent>
+          <Typography variant="h1" align="center" gutterBottom color="primary">
+            Transcendence
+          </Typography>
+          <Typography variant="h2" align="center" gutterBottom sx={{ fontSize: '1.5rem', mb: 3 }}>
+            Login
+          </Typography>
 
-        {step === 'login' ? (
-          <form onSubmit={handleLogin}>
-            <div>
-              <label htmlFor="username">Usuário</label><br />
-              <input
-                id="username" type="text" value={username}
-                onChange={(e) => setUsername(e.target.value)} required
+          {step === 'login' ? (
+            <Box component="form" onSubmit={handleLogin} sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+              <TextField
+                label="Usuário"
+                variant="outlined"
+                fullWidth
+                required
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
               />
-            </div>
-            <div>
-              <label htmlFor="password">Senha</label><br />
-              <input
-                id="password" type="password" value={password}
-                onChange={(e) => setPassword(e.target.value)} required
+              <TextField
+                label="Senha"
+                type="password"
+                variant="outlined"
+                fullWidth
+                required
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
               />
-            </div>
-            <button type="submit" disabled={loading}>
-              {loading ? 'Entrando...' : 'Entrar'}
-            </button>
-          </form>
-        ) : (
-          <form onSubmit={handle2FA}>
-            <div>
-              <label>Enter your authentication code:</label><br />
-              <input
-                type="text" value={totpCode}
-                onChange={(e) => setTotpCode(e.target.value)} required
-                maxLength={6}
+              <Button type="submit" variant="contained" color="primary" fullWidth disabled={loading} size="large" sx={{ mt: 1 }}>
+                {loading ? 'Entrando...' : 'Entrar'}
+              </Button>
+            </Box>
+          ) : (
+            <Box component="form" onSubmit={handle2FA} sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+              <Typography variant="body1" align="center">
+                Enter your authentication code (6 digits):
+              </Typography>
+              <TextField
+                label="Código 2FA"
+                variant="outlined"
+                fullWidth
+                required
+                value={totpCode}
+                onChange={(e) => setTotpCode(e.target.value)}
+                inputProps={{ maxLength: 6 }}
               />
-            </div>
-            <button type="submit" disabled={loading}>
-              {loading ? 'Verifying...' : 'Verify'}
-            </button>
-            <button type="button" onClick={() => {setStep('login'); setTotpCode('')}}>
-              Voltar
-            </button>
-          </form>
-        )}
+              <Box sx={{ display: 'flex', gap: 2, mt: 1 }}>
+                <Button type="submit" variant="contained" color="primary" fullWidth disabled={loading}>
+                  {loading ? 'Verifying...' : 'Verify'}
+                </Button>
+                <Button variant="outlined" color="secondary" fullWidth onClick={() => {setStep('login'); setTotpCode('')}}>
+                  Voltar
+                </Button>
+              </Box>
+            </Box>
+          )}
 
-        {message && <p>{message}</p>}
+          {message && (
+            <Typography color="error" align="center" sx={{ mt: 2 }}>
+              {message}
+            </Typography>
+          )}
 
-        {step === 'login' && (
-          <div>
-            <button type="button" onClick={() => navigate('/register')}>Create an account</button>
-            <button type="button" onClick={() => navigate('/privacy')}>Privacy Policy</button>
-            <button type="button" onClick={() => navigate('/terms')}>Terms of Service</button>
-          </div>
-        )}
-        {step === 'login' && (
-          <div style={{ marginTop: '20px' }}>
-            <button type="button" onClick={() => window.location.href = API_URL + '/auth/42/'}>
-              Login with 42
-            </button>
-          </div>
-        )}
-      </section>
-    </main>
+          {step === 'login' && (
+            <Box sx={{ mt: 3, display: 'flex', flexDirection: 'column', gap: 1 }}>
+              <Button variant="outlined" color="primary" fullWidth onClick={() => navigate('/register')}>
+                Create an account
+              </Button>
+              
+              <Box sx={{ display: 'flex', justifyContent: 'center', gap: 1, mt: 1 }}>
+                 <Button variant="text" size="small" onClick={() => navigate('/privacy')}>Privacy Policy</Button>
+                 <Button variant="text" size="small" onClick={() => navigate('/terms')}>Terms of Service</Button>
+              </Box>
+              
+              <Button 
+                variant="contained" 
+                fullWidth 
+                sx={{ mt: 2, backgroundColor: '#333', '&:hover': { backgroundColor: '#555' } }}
+                onClick={() => window.location.href = API_URL + '/auth/42/'}
+              >
+                Login with 42
+              </Button>
+            </Box>
+          )}
+        </CardContent>
+      </Card>
+    </Container>
   )
 }
 

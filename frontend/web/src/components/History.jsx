@@ -1,5 +1,8 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { Box, Button, Card, CardContent, Typography, Container, AppBar, Toolbar, Grid, Chip, CircularProgress, CardMedia, CardActions } from '@mui/material'
+import ArrowBackIcon from '@mui/icons-material/ArrowBack'
+import DeleteIcon from '@mui/icons-material/Delete'
 
 const API_URL = '/api'
 
@@ -20,30 +23,20 @@ const History = () => {
       }
 
       try {
-        const response = await fetch(
-          `${API_URL}/generations/`,
-          {
-            headers: {
-              Authorization: `Token ${token}`,
-            },
-          },
-        )
-
+        const response = await fetch(`${API_URL}/generations/`, {
+          headers: { Authorization: `Token ${token}` },
+        })
         const data = await response.json()
 
         if (!response.ok) {
-          setMessage(
-            data.error || 'Erro ao carregar histórico',
-          )
+          setMessage(data.error || 'Erro ao carregar histórico')
           return
         }
 
         setHistory(data)
       } catch (error) {
         console.error(error)
-        setMessage(
-          'Não foi possível conectar ao backend',
-        )
+        setMessage('Não foi possível conectar ao backend')
       } finally {
         setLoading(false)
       }
@@ -51,10 +44,6 @@ const History = () => {
 
     loadHistory()
   }, [navigate])
-
-  function handleBack() {
-    navigate('/generate')
-  }
 
   async function handleDelete(generationId) {
     const token = localStorage.getItem('token')
@@ -65,15 +54,10 @@ const History = () => {
     }
 
     try {
-      const response = await fetch(
-        `${API_URL}/generations/${generationId}/`,
-        {
-          method: 'DELETE',
-          headers: {
-            Authorization: `Token ${token}`,
-          },
-        },
-      )
+      const response = await fetch(`${API_URL}/generations/${generationId}/`, {
+        method: 'DELETE',
+        headers: { Authorization: `Token ${token}` },
+      })
 
       if (!response.ok) {
         const data = await response.json()
@@ -81,7 +65,6 @@ const History = () => {
         return
       }
 
-      // Remove do estado local
       setHistory(history.filter((gen) => gen.id !== generationId))
       setMessage('Geração excluída com sucesso')
     } catch (error) {
@@ -92,94 +75,107 @@ const History = () => {
 
   if (loading) {
     return (
-      <main>
-        <h1>Food AI</h1>
-        <p>Carregando histórico...</p>
-      </main>
+      <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', backgroundColor: 'background.default' }}>
+        <CircularProgress color="primary" />
+        <Typography variant="h6" sx={{ mt: 2, color: 'text.secondary' }}>Carregando histórico...</Typography>
+      </Box>
     )
   }
 
   return (
-    <main>
-      <h1>Food AI</h1>
+    <Box sx={{ minHeight: '100vh', backgroundColor: 'background.default' }}>
+      <AppBar position="static" color="transparent" elevation={0} sx={{ borderBottom: '1px solid rgba(255, 255, 255, 0.1)' }}>
+        <Toolbar>
+          <Typography variant="h6" component="div" sx={{ flexGrow: 1, color: 'primary.main', fontWeight: 'bold' }}>
+            Transcendence
+          </Typography>
+          <Button color="inherit" onClick={() => navigate('/dashboard')} startIcon={<ArrowBackIcon />}>
+            Voltar
+          </Button>
+        </Toolbar>
+      </AppBar>
 
-      <button
-        type="button"
-        onClick={handleBack}
-      >
-        Voltar para geração
-      </button>
+      <Container maxWidth="lg" sx={{ mt: 4, pb: 4 }}>
+        <Typography variant="h4" align="center" gutterBottom>
+          Histórico de Gerações
+        </Typography>
 
-      <h2>Histórico</h2>
+        {message && (
+          <Typography align="center" sx={{ mb: 4, color: 'primary.light' }}>
+            {message}
+          </Typography>
+        )}
 
-      {message && <p>{message}</p>}
+        {history.length === 0 && (
+          <Box sx={{ textAlign: 'center', mt: 4 }}>
+            <Typography variant="body1" color="text.secondary" gutterBottom>
+              Nenhuma geração encontrada.
+            </Typography>
+            <Button variant="contained" color="primary" onClick={() => navigate('/generate')} sx={{ mt: 2 }}>
+              Gerar nova imagem
+            </Button>
+          </Box>
+        )}
 
-      {history.length === 0 && (
-        <p>Nenhuma geração encontrada.</p>
-      )}
+        <Grid container spacing={3}>
+          {history.map((generation) => (
+            <Grid item xs={12} sm={6} md={4} key={generation.id}>
+              <Card sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+                <CardContent sx={{ flexGrow: 1 }}>
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                    <Typography variant="h6" component="h3">
+                      Geração #{generation.id}
+                    </Typography>
+                    <Chip 
+                      label={generation.status} 
+                      color={(generation.status === 'success' || generation.status === 'completed') ? 'success' : 'warning'} 
+                      size="small" 
+                    />
+                  </Box>
+                  <Typography variant="body2" color="text.secondary" gutterBottom>
+                    {new Date(generation.created_at).toLocaleString()}
+                  </Typography>
 
-      {history.map((generation) => (
-        <article
-          key={generation.id}
-          style={{
-            marginTop: '30px',
-            paddingBottom: '30px',
-            borderBottom: '1px solid #ccc',
-          }}
-        >
-          <h3>
-            Geração #{generation.id}
-          </h3>
-
-          <p>
-            Status:{' '}
-            <strong>
-              {generation.status}
-            </strong>
-          </p>
-
-          <p>
-            Data:{' '}
-            {new Date(
-              generation.created_at,
-            ).toLocaleString()}
-          </p>
-
-          <button
-            type="button"
-            onClick={() => handleDelete(generation.id)}
-          >
-            Deletar
-          </button>
-
-          <div>
-            <h4>Imagem original</h4>
-
-            <img
-              src={generation.original_image}
-              alt={`Imagem original da geração ${generation.id}`}
-              style={{
-                width: '100%',
-                maxWidth: '300px',
-              }}
-            />
-          </div>
-
-          <div>
-            <h4>Imagem gerada</h4>
-
-            <img
-              src={generation.generated_image}
-              alt={`Imagem gerada ${generation.id}`}
-              style={{
-                width: '100%',
-                maxWidth: '300px',
-              }}
-            />
-          </div>
-        </article>
-      ))}
-    </main>
+                  <Box sx={{ mt: 2, display: 'flex', flexDirection: 'column', gap: 2 }}>
+                    <Box>
+                      <Typography variant="caption" color="text.secondary" gutterBottom display="block">Original</Typography>
+                      <CardMedia
+                        component="img"
+                        height="140"
+                        image={generation.original_image}
+                        alt="Original"
+                        sx={{ borderRadius: 1, border: '1px solid rgba(255, 255, 255, 0.1)' }}
+                      />
+                    </Box>
+                    <Box>
+                      <Typography variant="caption" color="text.secondary" gutterBottom display="block">Gerada</Typography>
+                      <CardMedia
+                        component="img"
+                        height="140"
+                        image={generation.generated_image}
+                        alt="Gerada"
+                        sx={{ borderRadius: 1, border: '1px solid rgba(255, 255, 255, 0.1)' }}
+                      />
+                    </Box>
+                  </Box>
+                </CardContent>
+                <CardActions>
+                  <Button 
+                    size="small" 
+                    color="error" 
+                    startIcon={<DeleteIcon />} 
+                    fullWidth 
+                    onClick={() => handleDelete(generation.id)}
+                  >
+                    Deletar
+                  </Button>
+                </CardActions>
+              </Card>
+            </Grid>
+          ))}
+        </Grid>
+      </Container>
+    </Box>
   )
 }
 

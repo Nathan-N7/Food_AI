@@ -1,6 +1,12 @@
 import { useNavigate } from 'react-router-dom'
 import { useState, useEffect } from 'react'
-import './Social.css'
+import { Box, Card, CardContent, Typography, Badge, IconButton, AppBar, Toolbar, Container, Grid, Button } from '@mui/material'
+import RestaurantMenuIcon from '@mui/icons-material/RestaurantMenu'
+import HistoryIcon from '@mui/icons-material/History'
+import PersonIcon from '@mui/icons-material/Person'
+import PeopleIcon from '@mui/icons-material/People'
+import ChatIcon from '@mui/icons-material/Chat'
+import ExitToAppIcon from '@mui/icons-material/ExitToApp'
 
 const API_URL = '/api'
 
@@ -17,7 +23,6 @@ const Dashboard = () => {
 
   async function fetchNotifications() {
     try {
-      // Fetch pending friend requests
       const reqRes = await fetch(`${API_URL}/friends/requests/`, {
         headers: { Authorization: `Token ${token}` },
       })
@@ -26,7 +31,6 @@ const Dashboard = () => {
         setPendingRequests(data.length)
       }
 
-      // Fetch unread messages
       const convRes = await fetch(`${API_URL}/messages/conversations/`, {
         headers: { Authorization: `Token ${token}` },
       })
@@ -55,103 +59,59 @@ const Dashboard = () => {
     navigate('/login')
   }
 
+  const items = [
+    { title: 'Gerar', desc: 'Gerar imagem de comida', icon: <RestaurantMenuIcon fontSize="large" />, path: '/generate' },
+    { title: 'Histórico', desc: 'Ver gerações anteriores', icon: <HistoryIcon fontSize="large" />, path: '/history' },
+    { title: 'Perfil', desc: 'Editar seu perfil', icon: <PersonIcon fontSize="large" />, path: '/profile' },
+    { title: 'Amigos', desc: 'Gerenciar amizades', icon: <Badge badgeContent={pendingRequests} color="error"><PeopleIcon fontSize="large" /></Badge>, path: '/friends' },
+    { title: 'Mensagens', desc: 'Conversar com amigos', icon: <Badge badgeContent={unreadMessages} color="error"><ChatIcon fontSize="large" /></Badge>, path: '/chat', fullWidth: true },
+  ]
+
   return (
-    <div className="social-page">
-      <header className="social-header">
-        <h1>Food AI</h1>
-        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-          <span style={{ fontSize: '14px', color: 'var(--text)' }}>
+    <Box sx={{ minHeight: '100vh', backgroundColor: 'background.default' }}>
+      <AppBar position="static" color="transparent" elevation={0} sx={{ borderBottom: '1px solid rgba(255, 255, 255, 0.1)' }}>
+        <Toolbar>
+          <Typography variant="h6" component="div" sx={{ flexGrow: 1, color: 'primary.main', fontWeight: 'bold' }}>
+            Transcendence
+          </Typography>
+          <Typography variant="body1" sx={{ mr: 2 }}>
             Olá, {user.username}
-          </span>
-          <button className="back-btn" onClick={handleLogout}>
+          </Typography>
+          <Button color="inherit" onClick={handleLogout} startIcon={<ExitToAppIcon />}>
             Sair
-          </button>
-        </div>
-      </header>
+          </Button>
+        </Toolbar>
+      </AppBar>
 
-      <div style={{
-        maxWidth: '600px',
-        margin: '40px auto',
-        padding: '0 24px',
-        display: 'grid',
-        gridTemplateColumns: '1fr 1fr',
-        gap: '16px',
-      }}>
-        <div
-          className="social-card"
-          style={{ cursor: 'pointer', textAlign: 'center', padding: '32px 24px' }}
-          onClick={() => navigate('/generate')}
-        >
-          <div style={{ fontSize: '36px', marginBottom: '12px' }}>🍔</div>
-          <h2 style={{ margin: '0 0 4px', fontSize: '18px' }}>Gerar</h2>
-          <p style={{ fontSize: '13px', margin: 0 }}>Gerar imagem de comida</p>
-        </div>
-
-        <div
-          className="social-card"
-          style={{ cursor: 'pointer', textAlign: 'center', padding: '32px 24px' }}
-          onClick={() => navigate('/history')}
-        >
-          <div style={{ fontSize: '36px', marginBottom: '12px' }}>📜</div>
-          <h2 style={{ margin: '0 0 4px', fontSize: '18px' }}>Histórico</h2>
-          <p style={{ fontSize: '13px', margin: 0 }}>Ver gerações anteriores</p>
-        </div>
-
-        <div
-          className="social-card"
-          style={{ cursor: 'pointer', textAlign: 'center', padding: '32px 24px' }}
-          onClick={() => navigate('/profile')}
-        >
-          <div style={{ fontSize: '36px', marginBottom: '12px' }}>👤</div>
-          <h2 style={{ margin: '0 0 4px', fontSize: '18px' }}>Perfil</h2>
-          <p style={{ fontSize: '13px', margin: 0 }}>Editar seu perfil</p>
-        </div>
-
-        <div
-          className="social-card"
-          style={{ cursor: 'pointer', textAlign: 'center', padding: '32px 24px', position: 'relative' }}
-          onClick={() => navigate('/friends')}
-        >
-          <div style={{ fontSize: '36px', marginBottom: '12px' }}>👥</div>
-          <h2 style={{ margin: '0 0 4px', fontSize: '18px' }}>Amigos</h2>
-          <p style={{ fontSize: '13px', margin: 0 }}>Gerenciar amizades</p>
-          {pendingRequests > 0 && (
-            <span className="badge" style={{
-              position: 'absolute',
-              top: '12px',
-              right: '12px',
-            }}>
-              {pendingRequests}
-            </span>
-          )}
-        </div>
-
-        <div
-          className="social-card"
-          style={{
-            cursor: 'pointer',
-            textAlign: 'center',
-            padding: '32px 24px',
-            gridColumn: '1 / -1',
-            position: 'relative',
-          }}
-          onClick={() => navigate('/chat')}
-        >
-          <div style={{ fontSize: '36px', marginBottom: '12px' }}>💬</div>
-          <h2 style={{ margin: '0 0 4px', fontSize: '18px' }}>Mensagens</h2>
-          <p style={{ fontSize: '13px', margin: 0 }}>Conversar com amigos</p>
-          {unreadMessages > 0 && (
-            <span className="badge" style={{
-              position: 'absolute',
-              top: '12px',
-              right: '12px',
-            }}>
-              {unreadMessages}
-            </span>
-          )}
-        </div>
-      </div>
-    </div>
+      <Container maxWidth="md" sx={{ mt: 4 }}>
+        <Grid container spacing={3}>
+          {items.map((item, index) => (
+            <Grid item xs={12} sm={item.fullWidth ? 12 : 6} key={index}>
+              <Card 
+                sx={{ 
+                  cursor: 'pointer', 
+                  transition: '0.3s', 
+                  '&:hover': { transform: 'translateY(-4px)', boxShadow: 6, backgroundColor: 'rgba(255, 255, 255, 0.05)' } 
+                }}
+                onClick={() => navigate(item.path)}
+              >
+                <CardContent sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', p: 4 }}>
+                  <Box sx={{ color: 'primary.main', mb: 2 }}>
+                    {item.icon}
+                  </Box>
+                  <Typography variant="h5" component="h2" gutterBottom>
+                    {item.title}
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    {item.desc}
+                  </Typography>
+                </CardContent>
+              </Card>
+            </Grid>
+          ))}
+        </Grid>
+      </Container>
+    </Box>
   )
 }
 

@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { Box, Button, Card, CardContent, TextField, Typography, Container } from '@mui/material'
 
 const API_URL = '/api'
 
@@ -53,99 +54,69 @@ const Register = () => {
   }
 
   return (
-    <main>
-      <h1>Food AI</h1>
+    <Container maxWidth="xs" sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '100vh' }}>
+      <Card sx={{ width: '100%', p: 2 }}>
+        <CardContent>
+          <Typography variant="h1" align="center" gutterBottom color="primary">
+            Transcendence
+          </Typography>
+          <Typography variant="h2" align="center" gutterBottom sx={{ fontSize: '1.5rem', mb: 3 }}>
+            Criar Conta
+          </Typography>
 
-      <h2>Criar conta</h2>
+          <Box component="form" onSubmit={handleRegister} sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+            <TextField
+              label="Usuário"
+              variant="outlined"
+              fullWidth
+              required
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              placeholder="Ex: joaosilva"
+            />
+            <TextField
+              label="Email"
+              type="email"
+              variant="outlined"
+              fullWidth
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="joao@exemplo.com"
+            />
+            <TextField
+              label="Senha"
+              type="password"
+              variant="outlined"
+              fullWidth
+              required
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="Sua senha"
+            />
+            <Button type="submit" variant="contained" color="primary" fullWidth disabled={loading} size="large" sx={{ mt: 1 }}>
+              {loading ? 'Criando...' : 'Criar conta'}
+            </Button>
+          </Box>
 
-      <form onSubmit={handleRegister}>
-        <div>
-          <label htmlFor="username">
-            Usuário
-          </label>
+          {message && (
+            <Typography color={message.includes('sucesso') ? 'success.main' : 'error'} align="center" sx={{ mt: 2 }}>
+              {message}
+            </Typography>
+          )}
 
-          <br />
-
-          <input
-            id="username"
-            type="text"
-            value={username}
-            onChange={(event) =>
-              setUsername(event.target.value)
-            }
-            required
-          />
-        </div>
-
-        <div>
-          <label htmlFor="email">
-            Email
-          </label>
-
-          <br />
-
-          <input
-            id="email"
-            type="email"
-            value={email}
-            onChange={(event) =>
-              setEmail(event.target.value)
-            }
-          />
-        </div>
-
-        <div>
-          <label htmlFor="password">
-            Senha
-          </label>
-
-          <br />
-
-          <input
-            id="password"
-            type="password"
-            value={password}
-            onChange={(event) =>
-              setPassword(event.target.value)
-            }
-            required
-          />
-        </div>
-
-        <button
-          type="submit"
-          disabled={loading}
-        >
-          {loading ? 'Criando...' : 'Criar conta'}
-        </button>
-      </form>
-
-      <button
-        type="button"
-        onClick={() => navigate('/login')}
-      >
-        Já tenho uma conta
-      </button>
-
-      
-       <button
-            type="button"
-            onClick={() => navigate('/privacy')}
-          >
-            Privacy Policy
-          </button>
-
-          <button
-            type="button"
-            onClick={() => navigate('/terms')}
-          >
-            Terms of Service
-          </button>
-
-
-
-      {message && <p>{message}</p>}
-    </main>
+          <Box sx={{ mt: 3, display: 'flex', flexDirection: 'column', gap: 1 }}>
+            <Button variant="outlined" color="primary" fullWidth onClick={() => navigate('/login')}>
+              Já tenho uma conta
+            </Button>
+            
+            <Box sx={{ display: 'flex', justifyContent: 'center', gap: 1, mt: 1 }}>
+               <Button variant="text" size="small" onClick={() => navigate('/privacy')}>Privacy Policy</Button>
+               <Button variant="text" size="small" onClick={() => navigate('/terms')}>Terms of Service</Button>
+            </Box>
+          </Box>
+        </CardContent>
+      </Card>
+    </Container>
   )
 }
 

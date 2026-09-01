@@ -1,6 +1,9 @@
 import { toast } from 'react-toastify';
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { Box, Button, Card, CardContent, Typography, Container, AppBar, Toolbar, LinearProgress, Chip } from '@mui/material'
+import CloudUploadIcon from '@mui/icons-material/CloudUpload'
+import ArrowBackIcon from '@mui/icons-material/ArrowBack'
 
 const API_URL = '/api'
 
@@ -9,16 +12,8 @@ const Generate = () => {
 
   const [user] = useState(() => {
     const savedUser = localStorage.getItem('user')
-
-    if (!savedUser) {
-      return null
-    }
-
-    try {
-      return JSON.parse(savedUser)
-    } catch {
-      return null
-    }
+    if (!savedUser) return null
+    try { return JSON.parse(savedUser) } catch { return null }
   })
 
   const [image, setImage] = useState(null)
@@ -28,24 +23,8 @@ const Generate = () => {
   const [preview, setPreview] = useState(null)
   const [progress, setProgress] = useState(0)
 
-  async function handleLogout() {
-    const token = localStorage.getItem('token');
-    if (token) {
-      try {
-        await fetch('/api/auth/logout/', {
-          method: 'POST',
-          headers: { 'Authorization': `Token ${token}` }
-        });
-      } catch (e) { console.error(e); }
-    }
-    localStorage.removeItem('token')
-    localStorage.removeItem('user')
-    navigate('/login')
-  }
-
   async function handleGenerate(event) {
     event.preventDefault()
-
     const token = localStorage.getItem('token')
 
     if (!token) {
@@ -68,15 +47,12 @@ const Generate = () => {
     formData.append('image', image)
 
     const xhr = new XMLHttpRequest()
-
-    // Atualiza a % durante o upload
     xhr.upload.onprogress = (event) => {
       if (event.lengthComputable) {
         const percent = Math.round((event.loaded / event.total) * 100)
         setProgress(percent)
       }
     }
-    // Quando o servidor responde
     xhr.onload = () => {
       try {
         const data = JSON.parse(xhr.responseText)
@@ -92,7 +68,6 @@ const Generate = () => {
         setGenerating(false)
       }
     }
-    // Se a conexão cair
     xhr.onerror = () => {
       setMessage('Não foi possível concluir a geração'); toast.error('Não foi possível concluir a geração')
       setGenerating(false)
@@ -103,89 +78,111 @@ const Generate = () => {
   }
 
   return (
-    <main>
-      <h1>Food AI</h1>
+    <Box sx={{ minHeight: '100vh', backgroundColor: 'background.default' }}>
+      <AppBar position="static" color="transparent" elevation={0} sx={{ borderBottom: '1px solid rgba(255, 255, 255, 0.1)' }}>
+        <Toolbar>
+          <Typography variant="h6" component="div" sx={{ flexGrow: 1, color: 'primary.main', fontWeight: 'bold' }}>
+            Transcendence
+          </Typography>
+          <Button color="inherit" onClick={() => navigate('/dashboard')} startIcon={<ArrowBackIcon />}>
+            Voltar
+          </Button>
+        </Toolbar>
+      </AppBar>
 
-      <p>
-        Logado como: <strong>{user?.username}</strong>
-      </p>
+      <Container maxWidth="sm" sx={{ mt: 4, pb: 4 }}>
+        <Card>
+          <CardContent sx={{ p: 4 }}>
+            <Typography variant="h4" align="center" gutterBottom>
+              Gerar Imagem
+            </Typography>
+            
+            <Box component="form" onSubmit={handleGenerate} sx={{ display: 'flex', flexDirection: 'column', gap: 3, mt: 3 }}>
+              <Button
+                variant="outlined"
+                component="label"
+                fullWidth
+                sx={{ height: 100, borderStyle: 'dashed' }}
+                startIcon={<CloudUploadIcon fontSize="large" />}
+              >
+                Envie uma foto de comida
+                <input
+                  type="file"
+                  hidden
+                  accept="image/*"
+                  onChange={(event) => {
+                    setImage(event.target.files?.[0] || null)
+                    if (preview) URL.revokeObjectURL(preview)
+                    setPreview(event.target.files?.[0] ? URL.createObjectURL(event.target.files?.[0]) : null)
+                  }}
+                />
+              </Button>
 
-      <button type="button" onClick={handleLogout}>
-        Sair
-      </button>
+              {preview && (
+                <Box sx={{ textAlign: 'center' }}>
+                  <img
+                    src={preview}
+                    alt="Preview"
+                    style={{ width: '100%', maxWidth: '300px', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.1)' }}
+                  />
+                </Box>
+              )}
 
-      <h2>Gerar imagem</h2>
+              {generating && (
+                <Box sx={{ width: '100%' }}>
+                  <LinearProgress variant="determinate" value={progress} />
+                  <Typography variant="body2" align="center" sx={{ mt: 1 }}>
+                    {progress}% enviado — processando...
+                  </Typography>
+                </Box>
+              )}
 
-      {preview && (
-        <div>
-          <p>Preview:</p>
-          <img
-            src={preview}
-            alt="Preview da imagem selecionada"
-            style={{ width: '100%', maxWidth: '300px' }}
-          />
-        </div>
-      )}
+              <Button type="submit" variant="contained" color="primary" fullWidth disabled={generating} size="large">
+                {generating ? 'Gerando...' : 'Gerar Imagem'}
+              </Button>
+            </Box>
 
-      <form onSubmit={handleGenerate}>
-        <div>
-          <input
-            type="file"
-            accept="image/*"
-            onChange={(event) => {
-              setImage(event.target.files?.[0] || null)
-              if (preview) URL.revokeObjectURL(preview)
-              setPreview(event.target.files?.[0] ? URL.createObjectURL(event.target.files?.[0]) : null)
-            }}
-          />
-        </div>
-        {generating && (
-          <div>
-            <progress value={progress} max={100} style={{ width: '100%' }} />
-            <p>{progress}% enviado — aguardando processamento da IA...</p>
-          </div>
-        )}
-        <br />
+            {message && (
+              <Typography align="center" sx={{ mt: 2, color: result ? 'success.main' : 'error.main' }}>
+                {message}
+              </Typography>
+            )}
 
-        <button type="submit" disabled={generating}>
-          {generating ? 'Gerando...' : 'Gerar imagem'}
-        </button>
-      </form>
+            {result?.resultado && (
+              <Box sx={{ mt: 4, p: 2, backgroundColor: 'background.paper', borderRadius: 2 }}>
+                <Typography variant="h6" gutterBottom>Resultado</Typography>
+                <Typography variant="body1">
+                  Classe detectada: <strong>{result.resultado.name_class}</strong>
+                </Typography>
+                <Typography variant="body1" sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 1 }}>
+                  Válido: 
+                  <Chip 
+                    label={result.resultado.validate ? 'Sim' : 'Não'} 
+                    color={result.resultado.validate ? 'success' : 'error'} 
+                    size="small" 
+                  />
+                </Typography>
+              </Box>
+            )}
 
-      {message && <p>{message}</p>}
-
-      {result?.resultado && (
-        <section>
-          <h3>Resultado da detecção</h3>
-          <p>
-            Classe detectada:{' '}
-            <strong>{result.resultado.name_class}</strong>
-          </p>
-          <p>
-            Válido:{' '}
-            <strong>
-              {result.resultado.validate ? 'Sim' : 'Não'}
-            </strong>
-          </p>
-        </section>
-      )}
-
-      {result?.url_image && (
-        <section>
-          <h3>Imagem gerada</h3>
-
-          <img
-            src={result.url_image}
-            alt="Imagem gerada pelo Food AI"
-            style={{
-              width: '100%',
-              maxWidth: '400px',
-            }}
-          />
-        </section>
-      )}
-      <button onClick={() => navigate('/history')}>Histórico</button>
-    </main>
+            {result?.url_image && (
+              <Box sx={{ mt: 4, textAlign: 'center' }}>
+                <img
+                  src={result.url_image}
+                  alt="Imagem gerada"
+                  style={{
+                    width: '100%',
+                    maxWidth: '400px',
+                    borderRadius: '12px',
+                    boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
+                  }}
+                />
+              </Box>
+            )}
+          </CardContent>
+        </Card>
+      </Container>
+    </Box>
   )
 }
 

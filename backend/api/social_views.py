@@ -115,6 +115,10 @@ class UserProfileView(APIView):
         data["friendship_status"] = (
             friendship.status if friendship else None
         )
+
+        data["friendship_sender_id"] = (
+            friendship.from_user_id if friendship else None
+        )
         data["friendship_id"] = (
             friendship.id if friendship else None
         )
@@ -156,6 +160,10 @@ class UserSearchView(APIView):
 
             data["friendship_status"] = (
                 friendship.status if friendship else None
+            )
+
+            data["friendship_sender_id"] = (
+                friendship.from_user_id if friendship else None
             )
             data["friendship_id"] = (
                 friendship.id if friendship else None

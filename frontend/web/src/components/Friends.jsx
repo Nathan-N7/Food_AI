@@ -1,31 +1,49 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import './Social.css'
+import { 
+  Box, Button, Card, CardContent, TextField, Typography, Container, 
+  AppBar, Toolbar, Avatar, CircularProgress, Tabs, Tab, Badge, 
+  List, ListItem, ListItemAvatar, ListItemText, IconButton
+} from '@mui/material'
+import ArrowBackIcon from '@mui/icons-material/ArrowBack'
+import ChatIcon from '@mui/icons-material/Chat'
+import PersonIcon from '@mui/icons-material/Person'
+import PersonRemoveIcon from '@mui/icons-material/PersonRemove'
+import CheckIcon from '@mui/icons-material/Check'
+import CloseIcon from '@mui/icons-material/Close'
+import PersonAddIcon from '@mui/icons-material/PersonAdd'
+import AccessTimeIcon from '@mui/icons-material/AccessTime'
 
 const API_URL = '/api'
 
 const Friends = () => {
   const navigate = useNavigate()
-  const [activeTab, setActiveTab] = useState('friends')
+  
+  const [activeTab, setActiveTab] = useState(0) // 0: Friends, 1: Requests, 2: Search
   const [friends, setFriends] = useState([])
   const [requests, setRequests] = useState([])
   const [searchResults, setSearchResults] = useState([])
   const [searchQuery, setSearchQuery] = useState('')
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState('')
-  const [messageType, setMessageType] = useState('')
+  const [messageType, setMessageType] = useState('success')
 
   const token = localStorage.getItem('token')
 
   useEffect(() => {
+    if (!token) {
+      navigate('/login')
+      return
+    }
     fetchFriends()
     fetchRequests()
-  }, [])
+    // eslint-disable-next-line
+  }, [token, navigate])
 
-  function showMessage(text, type = 'success') {
-    setMessage(text)
+  function showMessage(msg, type = 'success') {
+    setMessage(msg)
     setMessageType(type)
-    setTimeout(() => setMessage(''), 4000)
+    setTimeout(() => setMessage(''), 5000)
   }
 
   async function fetchFriends() {
@@ -33,50 +51,39 @@ const Friends = () => {
       const res = await fetch(`${API_URL}/friends/`, {
         headers: { Authorization: `Token ${token}` },
       })
-      if (res.ok) {
-        const data = await res.json()
-        setFriends(data)
-      }
+      if (!res.ok) throw new Error('Erro ao carregar amigos')
+      const data = await res.json()
+      setFriends(data)
     } catch (err) {
-      console.error('Error fetching friends:', err)
+      console.error(err)
     }
   }
 
   async function fetchRequests() {
     try {
-      const res = await fetch(`${API_URL}/friends/requests/`, {
+      const res = await fetch(`${API_URL}/friends/request/`, {
         headers: { Authorization: `Token ${token}` },
       })
-      if (res.ok) {
-        const data = await res.json()
-        setRequests(data)
-      }
+      if (!res.ok) throw new Error('Erro ao carregar pedidos')
+      const data = await res.json()
+      setRequests(data)
     } catch (err) {
-      console.error('Error fetching requests:', err)
+      console.error(err)
     }
   }
 
   async function handleSearch() {
-    if (searchQuery.trim().length < 2) {
-      showMessage('Mínimo 2 caracteres para buscar', 'error')
-      return
-    }
-
+    if (!searchQuery.trim()) return
     setLoading(true)
     try {
-      const res = await fetch(
-        `${API_URL}/users/search/?q=${encodeURIComponent(searchQuery)}`,
-        { headers: { Authorization: `Token ${token}` } },
-      )
-      if (res.ok) {
-        const data = await res.json()
-        setSearchResults(data)
-        if (data.length === 0) {
-          showMessage('Nenhum usuário encontrado', 'error')
-        }
-      }
+      const res = await fetch(`${API_URL}/users/search/?q=${encodeURIComponent(searchQuery)}`, {
+        headers: { Authorization: `Token ${token}` },
+      })
+      if (!res.ok) throw new Error('Erro na busca')
+      const data = await res.json()
+      setSearchResults(data)
     } catch (err) {
-      showMessage('Erro na busca', 'error')
+      showMessage(err.message, 'error')
     } finally {
       setLoading(false)
     }
@@ -87,21 +94,16 @@ const Friends = () => {
       const res = await fetch(`${API_URL}/friends/request/`, {
         method: 'POST',
         headers: {
-          Authorization: `Token ${token}`,
           'Content-Type': 'application/json',
+          Authorization: `Token ${token}`,
         },
         body: JSON.stringify({ to_user_id: userId }),
       })
-
       const data = await res.json()
       if (!res.ok) throw new Error(data.error)
 
-      showMessage(data.message, 'success')
-
-      // Refresh data
+      showMessage('Pedido enviado com sucesso')
       handleSearch()
-      fetchFriends()
-      fetchRequests()
     } catch (err) {
       showMessage(err.message, 'error')
     }
@@ -113,13 +115,11 @@ const Friends = () => {
         method: 'POST',
         headers: { Authorization: `Token ${token}` },
       })
+      if (!res.ok) throw new Error('Erro ao aceitar pedido')
 
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.error)
-
-      showMessage('Amizade aceita! 🎉', 'success')
-      fetchFriends()
+      showMessage('Pedido aceito!')
       fetchRequests()
+      fetchFriends()
     } catch (err) {
       showMessage(err.message, 'error')
     }
@@ -131,11 +131,9 @@ const Friends = () => {
         method: 'POST',
         headers: { Authorization: `Token ${token}` },
       })
+      if (!res.ok) throw new Error('Erro ao rejeitar pedido')
 
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.error)
-
-      showMessage('Pedido rejeitado', 'success')
+      showMessage('Pedido rejeitado')
       fetchRequests()
     } catch (err) {
       showMessage(err.message, 'error')
@@ -143,14 +141,11 @@ const Friends = () => {
   }
 
   async function handleRemove(friendshipId) {
-    if (!confirm('Tem certeza que deseja remover este amigo?')) return
-
     try {
       const res = await fetch(`${API_URL}/friends/${friendshipId}/`, {
         method: 'DELETE',
         headers: { Authorization: `Token ${token}` },
       })
-
       if (!res.ok) throw new Error('Erro ao remover amigo')
 
       showMessage('Amigo removido', 'success')
@@ -164,219 +159,170 @@ const Friends = () => {
     return (name || '?').charAt(0).toUpperCase()
   }
 
-  function renderAvatar(user) {
-    if (user.avatar) {
-      return <img src={user.avatar} alt={user.username} className="avatar" />
-    }
-    return (
-      <div className="avatar avatar-placeholder">
-        {getInitials(user.display_name || user.username)}
-      </div>
-    )
-  }
-
-  function handleSearchKeyDown(e) {
-    if (e.key === 'Enter') handleSearch()
-  }
-
   return (
-    <div className="social-page">
-      <header className="social-header">
-        <h1>Amigos</h1>
-        <button className="back-btn" onClick={() => navigate('/dashboard')}>
-          ← Voltar
-        </button>
-      </header>
+    <Box sx={{ minHeight: '100vh', backgroundColor: 'background.default' }}>
+      <AppBar position="static" color="transparent" elevation={0} sx={{ borderBottom: '1px solid rgba(255, 255, 255, 0.1)' }}>
+        <Toolbar>
+          <Typography variant="h6" component="div" sx={{ flexGrow: 1, color: 'primary.main', fontWeight: 'bold' }}>
+            Transcendence
+          </Typography>
+          <Button color="inherit" onClick={() => navigate('/dashboard')} startIcon={<ArrowBackIcon />}>
+            Voltar
+          </Button>
+        </Toolbar>
+      </AppBar>
 
-      {message && (
-        <div className={`status-message ${messageType}`}>
-          {message}
-        </div>
-      )}
-
-      <div className="friends-container">
-        {/* Tabs */}
-        <div className="friends-tabs">
-          <button
-            className={`friends-tab ${activeTab === 'friends' ? 'active' : ''}`}
-            onClick={() => setActiveTab('friends')}
-          >
-            👥 Amigos ({friends.length})
-          </button>
-          <button
-            className={`friends-tab ${activeTab === 'requests' ? 'active' : ''}`}
-            onClick={() => setActiveTab('requests')}
-          >
-            📩 Pedidos
-            {requests.length > 0 && (
-              <span className="badge">{requests.length}</span>
-            )}
-          </button>
-          <button
-            className={`friends-tab ${activeTab === 'search' ? 'active' : ''}`}
-            onClick={() => setActiveTab('search')}
-          >
-            🔍 Buscar
-          </button>
-        </div>
-
-        {/* Friends List */}
-        {activeTab === 'friends' && (
-          <>
-            {friends.length === 0 ? (
-              <div className="empty-state">
-                <div className="empty-icon">👥</div>
-                <p>Você ainda não tem amigos.<br />Busque e adicione pessoas!</p>
-              </div>
-            ) : (
-              friends.map((friend) => (
-                <div key={friend.id} className="social-card friend-item">
-                  <div className={friend.is_online ? 'online-indicator' : ''}>
-                    {renderAvatar(friend)}
-                  </div>
-                  <div className="friend-info">
-                    <p className="friend-name">
-                      {friend.display_name || friend.username}
-                    </p>
-                    <p className="friend-username">
-                      @{friend.username}
-                      {friend.is_online && ' • 🟢 Online'}
-                    </p>
-                  </div>
-                  <div className="friend-actions">
-                    <button
-                      className="btn-primary"
-                      onClick={() => navigate(`/chat/${friend.id}`)}
-                      style={{ padding: '8px 14px', fontSize: '13px' }}
-                    >
-                      💬
-                    </button>
-                    <button
-                      className="btn-secondary"
-                      onClick={() => navigate(`/profile/${friend.id}`)}
-                    >
-                      👤
-                    </button>
-                    <button
-                      className="btn-danger"
-                      onClick={() => handleRemove(friend.friendship_id)}
-                    >
-                      ✕
-                    </button>
-                  </div>
-                </div>
-              ))
-            )}
-          </>
+      <Container maxWidth="md" sx={{ mt: 4, pb: 4 }}>
+        {message && (
+          <Typography align="center" sx={{ mb: 2, p: 1, borderRadius: 1, backgroundColor: messageType === 'error' ? 'error.dark' : 'success.dark', color: '#fff' }}>
+            {message}
+          </Typography>
         )}
 
-        {/* Pending Requests */}
-        {activeTab === 'requests' && (
-          <>
-            {requests.length === 0 ? (
-              <div className="empty-state">
-                <div className="empty-icon">📩</div>
-                <p>Nenhum pedido de amizade pendente.</p>
-              </div>
-            ) : (
-              requests.map((req) => (
-                <div key={req.friendship_id} className="social-card friend-item">
-                  {renderAvatar(req)}
-                  <div className="friend-info">
-                    <p className="friend-name">
-                      {req.display_name || req.username}
-                    </p>
-                    <p className="friend-username">
-                      @{req.username} quer ser seu amigo
-                    </p>
-                  </div>
-                  <div className="friend-actions">
-                    <button
-                      className="btn-success"
-                      onClick={() => handleAccept(req.friendship_id)}
+        <Card>
+          <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
+            <Tabs value={activeTab} onChange={(e, val) => setActiveTab(val)} variant="fullWidth">
+              <Tab label={`Amigos (${friends.length})`} />
+              <Tab label={
+                <Badge badgeContent={requests.length} color="error">
+                  Pedidos
+                </Badge>
+              } />
+              <Tab label="Buscar" />
+            </Tabs>
+          </Box>
+
+          <CardContent sx={{ p: 0 }}>
+            {/* AMIGOS */}
+            {activeTab === 0 && (
+              <List sx={{ width: '100%' }}>
+                {friends.length === 0 ? (
+                  <Box sx={{ textAlign: 'center', p: 4 }}>
+                    <Typography color="text.secondary">Você ainda não tem amigos. Busque e adicione pessoas!</Typography>
+                  </Box>
+                ) : (
+                  friends.map((friend) => (
+                    <ListItem key={friend.id} divider
+                      secondaryAction={
+                        <Box>
+                          <IconButton color="primary" onClick={() => navigate(`/chat/${friend.id}`)}>
+                            <ChatIcon />
+                          </IconButton>
+                          <IconButton color="secondary" onClick={() => navigate(`/profile/${friend.id}`)}>
+                            <PersonIcon />
+                          </IconButton>
+                          <IconButton color="error" onClick={() => handleRemove(friend.friendship_id)}>
+                            <PersonRemoveIcon />
+                          </IconButton>
+                        </Box>
+                      }
                     >
-                      ✓ Aceitar
-                    </button>
-                    <button
-                      className="btn-danger"
-                      onClick={() => handleReject(req.friendship_id)}
-                    >
-                      ✕ Rejeitar
-                    </button>
-                  </div>
-                </div>
-              ))
+                      <ListItemAvatar>
+                        <Badge variant="dot" color="success" invisible={!friend.is_online} overlap="circular" anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}>
+                          <Avatar src={friend.avatar}>{getInitials(friend.display_name || friend.username)}</Avatar>
+                        </Badge>
+                      </ListItemAvatar>
+                      <ListItemText 
+                        primary={friend.display_name || friend.username} 
+                        secondary={`@${friend.username} ${friend.is_online ? '• Online' : ''}`} 
+                      />
+                    </ListItem>
+                  ))
+                )}
+              </List>
             )}
-          </>
-        )}
 
-        {/* Search */}
-        {activeTab === 'search' && (
-          <>
-            <div className="search-box">
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                onKeyDown={handleSearchKeyDown}
-                placeholder="Buscar por username..."
-              />
-              <button
-                className="btn-primary"
-                onClick={handleSearch}
-                disabled={loading}
-              >
-                {loading ? '...' : '🔍 Buscar'}
-              </button>
-            </div>
+            {/* PEDIDOS */}
+            {activeTab === 1 && (
+              <List sx={{ width: '100%' }}>
+                {requests.length === 0 ? (
+                  <Box sx={{ textAlign: 'center', p: 4 }}>
+                    <Typography color="text.secondary">Nenhum pedido de amizade pendente.</Typography>
+                  </Box>
+                ) : (
+                  requests.map((req) => (
+                    <ListItem key={req.friendship_id} divider
+                      secondaryAction={
+                        <Box>
+                          <IconButton color="success" onClick={() => handleAccept(req.friendship_id)}>
+                            <CheckIcon />
+                          </IconButton>
+                          <IconButton color="error" onClick={() => handleReject(req.friendship_id)}>
+                            <CloseIcon />
+                          </IconButton>
+                        </Box>
+                      }
+                    >
+                      <ListItemAvatar>
+                        <Avatar src={req.avatar}>{getInitials(req.display_name || req.username)}</Avatar>
+                      </ListItemAvatar>
+                      <ListItemText 
+                        primary={req.display_name || req.username} 
+                        secondary={`@${req.username} quer ser seu amigo`} 
+                      />
+                    </ListItem>
+                  ))
+                )}
+              </List>
+            )}
 
-            {searchResults.length === 0 ? (
-              <div className="empty-state">
-                <div className="empty-icon">🔍</div>
-                <p>Busque por nome de usuário para encontrar pessoas.</p>
-              </div>
-            ) : (
-              searchResults.map((user) => (
-                <div key={user.id} className="social-card friend-item">
-                  {renderAvatar(user)}
-                  <div className="friend-info">
-                    <p className="friend-name">
-                      {user.display_name || user.username}
-                    </p>
-                    <p className="friend-username">@{user.username}</p>
-                  </div>
-                  <div className="friend-actions">
-                    {user.friendship_status === 'accepted' ? (
-                      <button className="btn-success" disabled>
-                        ✓ Amigos
-                      </button>
-                    ) : user.friendship_status === 'pending' ? (
-                      <button className="btn-secondary" disabled>
-                        ⏳ Pendente
-                      </button>
-                    ) : (
-                      <button
-                        className="btn-primary"
-                        onClick={() => handleSendRequest(user.id)}
-                        style={{ padding: '8px 14px', fontSize: '13px' }}
+            {/* BUSCA */}
+            {activeTab === 2 && (
+              <Box sx={{ p: 2 }}>
+                <Box sx={{ display: 'flex', gap: 2, mb: 2 }}>
+                  <TextField 
+                    fullWidth 
+                    size="small"
+                    placeholder="Buscar por username..." 
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+                  />
+                  <Button variant="contained" onClick={handleSearch} disabled={loading}>
+                    Buscar
+                  </Button>
+                </Box>
+                
+                <List sx={{ width: '100%' }}>
+                  {searchResults.length === 0 ? (
+                    <Box sx={{ textAlign: 'center', p: 4 }}>
+                      <Typography color="text.secondary">Busque por nome de usuário para encontrar pessoas.</Typography>
+                    </Box>
+                  ) : (
+                    searchResults.map((user) => (
+                      <ListItem key={user.id} divider
+                        secondaryAction={
+                          <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+                            {user.friendship_status === 'accepted' ? (
+                              <Button variant="contained" color="success" size="small" disabled startIcon={<CheckIcon />}>Amigos</Button>
+                            ) : user.friendship_status === 'pending' ? (
+                              <Button variant="outlined" color="secondary" size="small" disabled startIcon={<AccessTimeIcon />}>Pendente</Button>
+                            ) : (
+                              <Button variant="contained" color="primary" size="small" onClick={() => handleSendRequest(user.id)} startIcon={<PersonAddIcon />}>Adicionar</Button>
+                            )}
+                            <IconButton color="secondary" size="small" onClick={() => navigate(`/profile/${user.id}`)}>
+                              <PersonIcon />
+                            </IconButton>
+                          </Box>
+                        }
                       >
-                        ➕ Adicionar
-                      </button>
-                    )}
-                    <button
-                      className="btn-secondary"
-                      onClick={() => navigate(`/profile/${user.id}`)}
-                    >
-                      👤
-                    </button>
-                  </div>
-                </div>
-              ))
+                        <ListItemAvatar>
+                          <Avatar src={user.avatar}>{getInitials(user.display_name || user.username)}</Avatar>
+                        </ListItemAvatar>
+                        <ListItemText 
+                          primary={user.display_name || user.username} 
+                          secondary={`@${user.username}`} 
+                        />
+                      </ListItem>
+                    ))
+                  )}
+                </List>
+              </Box>
             )}
-          </>
-        )}
-      </div>
-    </div>
+          </CardContent>
+        </Card>
+      </Container>
+    </Box>
   )
 }
 
