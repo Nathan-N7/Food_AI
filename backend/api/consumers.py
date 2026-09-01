@@ -62,6 +62,21 @@ def get_online_friend_ids(user):
         return []
 
 
+@database_sync_to_async
+def get_user_profile_nickname(user):
+    """
+    Fetch the user's profile nickname without doing a synchronous ORM
+    lookup from an async context (avoids SynchronousOnlyOperation).
+    """
+    try:
+        profile = Profile.objects.get(user=user)
+        return profile.nickname or user.username
+    except Profile.DoesNotExist:
+        return user.username
+    except Exception:
+        return user.username
+
+
 class PresenceConsumer(AsyncJsonWebsocketConsumer):
     async def connect(self):
         self.user = self.scope.get("user")
@@ -85,6 +100,7 @@ class PresenceConsumer(AsyncJsonWebsocketConsumer):
 
         # Notify all friends that this user came online
         friend_ids = await get_user_friend_ids(self.user)
+        nickname = await get_user_profile_nickname(self.user)
         for friend_id in friend_ids:
             await self.channel_layer.group_send(
                 f"user_{friend_id}",
@@ -92,7 +108,7 @@ class PresenceConsumer(AsyncJsonWebsocketConsumer):
                     "type": "friend_presence_update",
                     "user_id": self.user.id,
                     "username": self.user.username,
-                    "nickname": getattr(getattr(self.user, 'profile', None), 'nickname', '') or self.user.username,
+                    "nickname": nickname,
                     "status": "online",
                 },
             )
@@ -111,6 +127,7 @@ class PresenceConsumer(AsyncJsonWebsocketConsumer):
 
             # Notify all friends that this user went offline
             friend_ids = await get_user_friend_ids(self.user)
+            nickname = await get_user_profile_nickname(self.user)
             for friend_id in friend_ids:
                 await self.channel_layer.group_send(
                     f"user_{friend_id}",
@@ -118,7 +135,7 @@ class PresenceConsumer(AsyncJsonWebsocketConsumer):
                         "type": "friend_presence_update",
                         "user_id": self.user.id,
                         "username": self.user.username,
-                        "nickname": getattr(getattr(self.user, 'profile', None), 'nickname', '') or self.user.username,
+                        "nickname": nickname,
                         "status": "offline",
                     },
                 )
