@@ -91,6 +91,11 @@ REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
         'rest_framework.authentication.SessionAuthentication',
     ],
+    # The backend sits behind a single nginx proxy. Without NUM_PROXIES, the
+    # AnonRateThrottle uses the proxy's IP as the key for every request, which
+    # shared-throttles all users behind the proxy. Tells DRF to read the real
+    # client IP from X-Forwarded-For so each user is throttled independently.
+    'NUM_PROXIES': 1,
     'DEFAULT_THROTTLE_RATES': {
         'anon': '20/hour',
         'user_generate': '30/hour',
