@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useState, useEffect } from 'react'
+import { useNavigate, useLocation } from 'react-router-dom'
 
 const API_URL = '/api'
 
@@ -13,7 +13,33 @@ const Login = () => {
   const [tempToken, setTempToken] = useState('')
   const [totpCode, setTotpCode] = useState('')
 
+
   const navigate = useNavigate()
+  const location = useLocation()
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search)
+    const error = params.get('error')
+    const token = params.get('token')
+    const require_2fa = params.get('require_2fa')
+    
+    if (error) {
+      setMessage('Erro na autenticação 42: ' + error)
+    } else if (require_2fa === 'true') {
+      const t_token = params.get('temp_token')
+      if (t_token) {
+        setTempToken(t_token)
+        setStep('2fa')
+      }
+    } else if (token) {
+      const userId = params.get('user_id')
+      const username = params.get('username')
+      localStorage.setItem('token', token)
+      localStorage.setItem('user', JSON.stringify({id: userId, username: username}))
+      navigate('/dashboard')
+    }
+  }, [location, navigate])
+
 
   async function handleLogin(event) {
     event.preventDefault()
@@ -129,6 +155,13 @@ const Login = () => {
             <button type="button" onClick={() => navigate('/register')}>Create an account</button>
             <button type="button" onClick={() => navigate('/privacy')}>Privacy Policy</button>
             <button type="button" onClick={() => navigate('/terms')}>Terms of Service</button>
+          </div>
+        )}
+        {step === 'login' && (
+          <div style={{ marginTop: '20px' }}>
+            <button type="button" onClick={() => window.location.href = API_URL + '/auth/42/'}>
+              Login with 42
+            </button>
           </div>
         )}
       </section>

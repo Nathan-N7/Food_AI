@@ -16,6 +16,8 @@ from .views import (
     PingView
 )
 
+from .oauth_views import OAuth42LoginView, OAuth42CallbackView
+
 from .social_views import (
     MyProfileView,
     UserProfileView,
@@ -38,6 +40,8 @@ urlpatterns = [
     path("auth/2fa/setup/", Setup2FAView.as_view(), name="setup-2fa"),
     path("auth/2fa/verify/", Verify2FAView.as_view(), name="verify-2fa"),
     path("auth/2fa/disable/", Disable2FAView.as_view(), name="disable-2fa"),
+    path("auth/42/", OAuth42LoginView.as_view(), name="oauth-42-login"),
+    path("auth/42/callback/", OAuth42CallbackView.as_view(), name="oauth-42-callback"),
     path("auth/logout/", LogoutView.as_view(), name="logout"),
     path("ping/", PingView.as_view(), name="ping"),
     path("generate/", validationFoodView.as_view(), name="generate"),

@@ -71,6 +71,11 @@ class UserProfile(models.Model):
         blank=True,
         null=True,
     )
+    fortytwo_id = models.IntegerField(
+        unique=True,
+        null=True,
+        blank=True,
+    )
 
     def __str__(self):
         return f"Profile: {self.user.username}"
