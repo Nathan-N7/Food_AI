@@ -226,3 +226,15 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"
+
+# ── Escola 42 (Intra 42) OAuth ──────────────────────────────────────────
+FORTY_TWO_CLIENT_ID = os.getenv("FORTY_TWO_CLIENT_ID", "")
+FORTY_TWO_CLIENT_SECRET = os.getenv("FORTY_TWO_CLIENT_SECRET", "")
+FORTY_TWO_REDIRECT_URI = os.getenv(
+    "FORTY_TWO_REDIRECT_URI",
+    "https://localhost:8443/api/auth/42/callback",
+)
+FORTY_TWO_SUCCESS_URL = os.getenv(
+    "FORTY_TWO_SUCCESS_URL",
+    "https://localhost:8443/oauth/success",
+)

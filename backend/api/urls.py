@@ -19,12 +19,21 @@ from .views import (
     FriendDeleteView,
 )
 
+from .oauth42 import (
+    FortyTwoAuthorizeView,
+    FortyTwoCallbackView,
+)
+
 urlpatterns = [
     # Auth
     path("auth/register/", RegisterView.as_view(), name="register"),
     path("auth/login/", LoginView.as_view(), name="login"),
     path("auth/me/", AuthMeView.as_view(), name="auth-me"),
     path("auth/logout/", AuthLogoutView.as_view(), name="auth-logout"),
+
+    # Auth via Escola 42 (OAuth 2.0)
+    path("auth/42/authorize/", FortyTwoAuthorizeView.as_view(), name="auth-42-authorize"),
+    path("auth/42/callback/", FortyTwoCallbackView.as_view(), name="auth-42-callback"),
 
     # Profile & Users
     path("users/profile/", ProfileDetailView.as_view(), name="user-profile-detail"),
