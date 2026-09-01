@@ -5,6 +5,8 @@ from .views import (
     RegenerateImageView,
     RegisterView,
     LoginView,
+    AuthMeView,
+    AuthLogoutView,
     GenerationListView,
     GenerationDeleteView,
     ProfileDetailView,
@@ -21,6 +23,8 @@ urlpatterns = [
     # Auth
     path("auth/register/", RegisterView.as_view(), name="register"),
     path("auth/login/", LoginView.as_view(), name="login"),
+    path("auth/me/", AuthMeView.as_view(), name="auth-me"),
+    path("auth/logout/", AuthLogoutView.as_view(), name="auth-logout"),
 
     # Profile & Users
     path("users/profile/", ProfileDetailView.as_view(), name="user-profile-detail"),

@@ -1,19 +1,25 @@
 from uuid import uuid4
 
-from django.contrib.auth import authenticate, get_user_model
+import logging
+
+from django.contrib.auth import authenticate, get_user_model, login, logout
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError as DjangoValidationError
+from django.db import transaction
+from django.db.models import Q
 
 from pydantic import ValidationError
 
 from rest_framework import status
-from rest_framework.authentication import TokenAuthentication
-from rest_framework.authtoken.models import Token
+from rest_framework.authentication import SessionAuthentication
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from rest_framework.throttling import (
+    AnonRateThrottle,
+    ScopedRateThrottle,
+)
 
-from django.db.models import Q
 from asgiref.sync import async_to_sync
 from channels.layers import get_channel_layer
 
@@ -29,13 +35,22 @@ from .services.flux_image_generate import flux_image_generate
 from .services.images_utils import file_to_data_url
 from .services.rtdetr import RtFilter
 from .services.save_image import save_image_from_url
-from rest_framework.throttling import UserRateThrottle
 
 
 User = get_user_model()
+logger = logging.getLogger(__name__)
+
+# Shared auth/perm for authenticated views.
+AUTH_AUTHENTICATION = [SessionAuthentication]
+AUTH_PERMISSION = [IsAuthenticated]
 
 
 class RegenerateImageView(APIView):
+    authentication_classes = AUTH_AUTHENTICATION
+    permission_classes = AUTH_PERMISSION
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = "user_regenerate"
+
     def post(self, request, *args, **kwargs):
         thread_id = request.data.get("thread_id")
 
@@ -43,6 +58,18 @@ class RegenerateImageView(APIView):
             return Response(
                 {"error": "thread_id obrigatório"},
                 status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Ownership check: the thread must belong to the requesting user.
+        owns_thread = Generation.objects.filter(
+            user=request.user,
+            thread_id=thread_id,
+        ).exists()
+
+        if not owns_thread:
+            return Response(
+                {"error": "thread_id não pertence ao usuário"},
+                status=status.HTTP_404_NOT_FOUND,
             )
 
         try:
@@ -121,9 +148,10 @@ class RegenerateImageView(APIView):
 
 
 class validationFoodView(APIView):
-    authentication_classes = [TokenAuthentication]
-    permission_classes = [IsAuthenticated]
-    throttle_classes = [UserRateThrottle]
+    authentication_classes = AUTH_AUTHENTICATION
+    permission_classes = AUTH_PERMISSION
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = "user_generate"
 
     def post(self, request, *args, **kwargs):
         file_image = request.FILES.get("image")
@@ -231,6 +259,7 @@ class validationFoodView(APIView):
 
             Generation.objects.create(
                 user=request.user,
+                thread_id=thread_id,
                 original_image=file_image,
                 generated_image=url_image,
                 prompt=prompt_model.model_dump(),
@@ -274,6 +303,7 @@ class validationFoodView(APIView):
 class RegisterView(APIView):
     authentication_classes = []
     permission_classes = [AllowAny]
+    throttle_classes = [AnonRateThrottle]
 
     def post(self, request):
         username = (
@@ -334,10 +364,14 @@ class RegisterView(APIView):
             password=password,
         )
 
-        Profile.objects.create(
+        # A Profile is auto-created by the post_save signal; apply the nickname.
+        profile, created = Profile.objects.get_or_create(
             user=user,
-            nickname=nickname,
+            defaults={"nickname": nickname},
         )
+        if not created and nickname:
+            profile.nickname = nickname
+            profile.save()
 
         return Response(
             {
@@ -353,6 +387,7 @@ class RegisterView(APIView):
 class LoginView(APIView):
     authentication_classes = []
     permission_classes = [AllowAny]
+    throttle_classes = [AnonRateThrottle]
 
     def post(self, request):
         identifier = (
@@ -399,15 +434,13 @@ class LoginView(APIView):
                 status=status.HTTP_401_UNAUTHORIZED,
             )
 
-        token, _ = Token.objects.get_or_create(
-            user=user
-        )
+        # Establish the server-side session (httpOnly cookie).
+        login(request, user)
 
-        profile, _ = Profile.objects.get_or_create(user=user)
+        profile = Profile.objects.get(user=user)
 
         return Response(
             {
-                "token": token.key,
                 "user": {
                     "id": user.id,
                     "username": user.username,
@@ -419,9 +452,40 @@ class LoginView(APIView):
         )
 
 
+class AuthMeView(APIView):
+    authentication_classes = AUTH_AUTHENTICATION
+    permission_classes = AUTH_PERMISSION
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = "user_light"
+
+    def get(self, request):
+        user = request.user
+        profile = Profile.objects.get(user=user)
+        return Response(
+            {
+                "id": user.id,
+                "username": user.username,
+                "email": user.email,
+                "nickname": profile.nickname,
+            },
+            status=status.HTTP_200_OK,
+        )
+
+
+class AuthLogoutView(APIView):
+    authentication_classes = AUTH_AUTHENTICATION
+    permission_classes = AUTH_PERMISSION
+
+    def post(self, request):
+        logout(request)
+        return Response(status=status.HTTP_200_OK)
+
+
 class GenerationListView(APIView):
-    authentication_classes = [TokenAuthentication]
+    authentication_classes = AUTH_AUTHENTICATION
     permission_classes = [IsAuthenticated]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = "user_light"
 
     def get(self, request):
         generations = (
@@ -463,8 +527,10 @@ class GenerationListView(APIView):
 
 
 class GenerationDeleteView(APIView):
-    authentication_classes = [TokenAuthentication]
+    authentication_classes = AUTH_AUTHENTICATION
     permission_classes = [IsAuthenticated]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = "user_light"
 
     def delete(self, request, pk):
         try:
@@ -499,17 +565,24 @@ def notify_user_channel(user_id, action, data):
                     "data": data,
                 },
             )
-    except Exception:
-        pass
+    except Exception as e:
+        logger.warning(
+            "Falha ao notificar canal do usuário %s (action=%s): %s",
+            user_id,
+            action,
+            e,
+        )
 
 
 class ProfileDetailView(APIView):
-    authentication_classes = [TokenAuthentication]
+    authentication_classes = AUTH_AUTHENTICATION
     permission_classes = [IsAuthenticated]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = "user_light"
 
     def get(self, request):
         user = request.user
-        profile, _ = Profile.objects.get_or_create(user=user)
+        profile = Profile.objects.get(user=user)
 
         generations_count = Generation.objects.filter(user=user).count()
         friends_count = Friendship.objects.filter(
@@ -541,16 +614,13 @@ class ProfileDetailView(APIView):
 
     def patch(self, request):
         user = request.user
-        profile, _ = Profile.objects.get_or_create(user=user)
+        # Profile auto-created by the post_save signal at user creation.
+        profile = Profile.objects.get(user=user)
 
-        # Update basic profile fields
+        # Validate everything BEFORE entering the atomic block so validation
+        # errors never cause partial commits.
         nickname = request.data.get("nickname")
-        if nickname is not None:
-            profile.nickname = nickname.strip()
-
         bio = request.data.get("bio")
-        if bio is not None:
-            profile.bio = bio.strip()
 
         email = request.data.get("email")
         if email is not None:
@@ -561,10 +631,7 @@ class ProfileDetailView(APIView):
                         {"error": "Este email já está em uso por outro usuário"},
                         status=status.HTTP_400_BAD_REQUEST,
                     )
-                user.email = email
-                user.save(update_fields=["email"])
 
-        # Handle avatar upload
         avatar_file = request.FILES.get("avatar")
         if avatar_file:
             allowed_types = {"image/jpeg", "image/png", "image/webp", "image/gif"}
@@ -579,21 +646,6 @@ class ProfileDetailView(APIView):
                     status=status.HTTP_400_BAD_REQUEST,
                 )
 
-            # Delete old avatar file if present
-            if profile.avatar:
-                profile.avatar.delete(save=False)
-
-            profile.avatar = avatar_file
-
-        # Handle avatar removal
-        if request.data.get("remove_avatar") == "true" or request.data.get("remove_avatar") is True:
-            if profile.avatar:
-                profile.avatar.delete(save=False)
-                profile.avatar = None
-
-        profile.save()
-
-        # Handle password change
         current_password = request.data.get("current_password")
         new_password = request.data.get("new_password")
         if new_password:
@@ -609,8 +661,40 @@ class ProfileDetailView(APIView):
                     {"error": "Nova senha inválida", "details": list(e.messages)},
                     status=status.HTTP_400_BAD_REQUEST,
                 )
-            user.set_password(new_password)
-            user.save(update_fields=["password"])
+
+        # All validation passed -> apply mutations atomically.
+        with transaction.atomic():
+            if nickname is not None:
+                profile.nickname = nickname.strip()
+
+            if bio is not None:
+                profile.bio = bio.strip()
+
+            if email is not None:
+                email = email.strip()
+                if email and email != user.email:
+                    user.email = email
+                    user.save(update_fields=["email"])
+
+            # Handle avatar upload
+            if avatar_file:
+                # Delete old avatar file if present
+                if profile.avatar:
+                    profile.avatar.delete(save=False)
+                profile.avatar = avatar_file
+
+            # Handle avatar removal
+            if request.data.get("remove_avatar") == "true" or request.data.get("remove_avatar") is True:
+                if profile.avatar:
+                    profile.avatar.delete(save=False)
+                    profile.avatar = None
+
+            profile.save()
+
+            # Handle password change
+            if new_password:
+                user.set_password(new_password)
+                user.save(update_fields=["password"])
 
         generations_count = Generation.objects.filter(user=user).count()
         friends_count = Friendship.objects.filter(
@@ -638,8 +722,10 @@ class ProfileDetailView(APIView):
 
 
 class UserProfileView(APIView):
-    authentication_classes = [TokenAuthentication]
+    authentication_classes = AUTH_AUTHENTICATION
     permission_classes = [IsAuthenticated]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = "user_light"
 
     def get(self, request, pk):
         try:
@@ -650,7 +736,7 @@ class UserProfileView(APIView):
                 status=status.HTTP_404_NOT_FOUND,
             )
 
-        target_profile, _ = Profile.objects.get_or_create(user=target_user)
+        target_profile = Profile.objects.get(user=target_user)
         generations_count = Generation.objects.filter(user=target_user).count()
 
         # Check friendship status
@@ -691,8 +777,10 @@ class UserProfileView(APIView):
 
 
 class UserSearchView(APIView):
-    authentication_classes = [TokenAuthentication]
+    authentication_classes = AUTH_AUTHENTICATION
     permission_classes = [IsAuthenticated]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = "user_light"
 
     def get(self, request):
         query = (request.query_params.get("q") or "").strip()
@@ -721,7 +809,7 @@ class UserSearchView(APIView):
 
         results = []
         for u in users:
-            prof, _ = Profile.objects.get_or_create(user=u)
+            prof = Profile.objects.get(user=u)
             f_status, f_id = friendship_map.get(u.id, ("none", None))
             results.append({
                 "id": u.id,
@@ -738,8 +826,10 @@ class UserSearchView(APIView):
 
 
 class FriendListView(APIView):
-    authentication_classes = [TokenAuthentication]
+    authentication_classes = AUTH_AUTHENTICATION
     permission_classes = [IsAuthenticated]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = "user_light"
 
     def get(self, request):
         user = request.user
@@ -752,7 +842,7 @@ class FriendListView(APIView):
         friends = []
         for f in friendships:
             friend_user = f.receiver if f.sender_id == user.id else f.sender
-            prof, _ = Profile.objects.get_or_create(user=friend_user)
+            prof = Profile.objects.get(user=friend_user)
             friends.append({
                 "friendship_id": f.id,
                 "id": friend_user.id,
@@ -769,8 +859,10 @@ class FriendListView(APIView):
 
 
 class FriendRequestsView(APIView):
-    authentication_classes = [TokenAuthentication]
+    authentication_classes = AUTH_AUTHENTICATION
     permission_classes = [IsAuthenticated]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = "user_light"
 
     def get(self, request):
         user = request.user
@@ -789,7 +881,7 @@ class FriendRequestsView(APIView):
 
         received_data = []
         for r in received_requests:
-            sender_prof, _ = Profile.objects.get_or_create(user=r.sender)
+            sender_prof = Profile.objects.get(user=r.sender)
             received_data.append({
                 "id": r.id,
                 "user": {
@@ -804,7 +896,7 @@ class FriendRequestsView(APIView):
 
         sent_data = []
         for s in sent_requests:
-            receiver_prof, _ = Profile.objects.get_or_create(user=s.receiver)
+            receiver_prof = Profile.objects.get(user=s.receiver)
             sent_data.append({
                 "id": s.id,
                 "user": {
@@ -827,8 +919,10 @@ class FriendRequestsView(APIView):
 
 
 class FriendRequestSendView(APIView):
-    authentication_classes = [TokenAuthentication]
+    authentication_classes = AUTH_AUTHENTICATION
     permission_classes = [IsAuthenticated]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = "user_light"
 
     def post(self, request, user_id):
         if request.user.id == user_id:
@@ -845,34 +939,62 @@ class FriendRequestSendView(APIView):
                 status=status.HTTP_404_NOT_FOUND,
             )
 
-        # Check existing friendship
-        existing = Friendship.objects.filter(
-            (Q(sender=request.user) & Q(receiver=target_user))
-            | (Q(sender=target_user) & Q(receiver=request.user))
-        ).first()
+        first = min(int(request.user.id), int(target_user.id))
+        second = max(int(request.user.id), int(target_user.id))
+        pair_key = f"{first}_{second}"
 
-        if existing:
-            if existing.status == "accepted":
+        with transaction.atomic():
+            friendship, created = Friendship.objects.get_or_create(
+                pair_key=pair_key,
+                defaults={
+                    "sender": request.user,
+                    "receiver": target_user,
+                    "status": "pending",
+                },
+            )
+
+            if created:
+                # Notify the target user in real time.
+                sender_prof = Profile.objects.get(user=request.user)
+                notify_user_channel(
+                    target_user.id,
+                    "friend_request_received",
+                    {
+                        "request_id": friendship.id,
+                        "sender": {
+                            "id": request.user.id,
+                            "username": request.user.username,
+                            "nickname": sender_prof.nickname,
+                            "avatar": sender_prof.get_avatar_url(request),
+                        },
+                    },
+                )
+                return Response(
+                    {
+                        "message": "Solicitação de amizade enviada com sucesso",
+                        "status": "pending",
+                        "friendship_id": friendship.id,
+                    },
+                    status=status.HTTP_201_CREATED,
+                )
+
+            # Existing row for this pair.
+            if friendship.status == "accepted":
                 return Response(
                     {"error": "Vocês já são amigos"},
                     status=status.HTTP_400_BAD_REQUEST,
                 )
-            elif existing.sender == request.user and existing.status == "pending":
-                return Response(
-                    {"error": "Solicitação de amizade já enviada"},
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
-            elif existing.receiver == request.user and existing.status == "pending":
-                # Automatically accept if the other user had sent a request earlier
-                existing.status = "accepted"
-                existing.save()
 
-                # Real-time notify
+            if friendship.receiver_id == request.user.id and friendship.status == "pending":
+                # The other user had sent a request earlier -> mutual auto-accept.
+                friendship.status = "accepted"
+                friendship.save(update_fields=["status"])
+
                 notify_user_channel(
-                    existing.sender.id,
+                    friendship.sender_id,
                     "friend_accepted",
                     {
-                        "friendship_id": existing.id,
+                        "friendship_id": friendship.id,
                         "user_id": request.user.id,
                         "username": request.user.username,
                     },
@@ -881,52 +1003,85 @@ class FriendRequestSendView(APIView):
                     {
                         "message": "Solicitação mútua aceita automaticamente!",
                         "status": "accepted",
-                        "friendship_id": existing.id,
+                        "friendship_id": friendship.id,
                     },
                     status=status.HTTP_200_OK,
                 )
-            else:
-                existing.sender = request.user
-                existing.receiver = target_user
-                existing.status = "pending"
-                existing.save()
-                friendship = existing
-        else:
+
+            if friendship.sender_id == request.user.id and friendship.status == "pending":
+                return Response(
+                    {"error": "Solicitação de amizade já enviada"},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            # Defensive: rejected rows should not exist (FriendRespondView
+            # deletes on reject), but if one appears, repurpose it as pending
+            # with the correct direction instead of the old swap logic.
+            if friendship.status == "rejected":
+                friendship.sender = request.user
+                friendship.receiver = target_user
+                friendship.status = "pending"
+                friendship.save(update_fields=["sender", "receiver", "status"])
+
+                sender_prof = Profile.objects.get(user=request.user)
+                notify_user_channel(
+                    target_user.id,
+                    "friend_request_received",
+                    {
+                        "request_id": friendship.id,
+                        "sender": {
+                            "id": request.user.id,
+                            "username": request.user.username,
+                            "nickname": sender_prof.nickname,
+                            "avatar": sender_prof.get_avatar_url(request),
+                        },
+                    },
+                )
+                return Response(
+                    {
+                        "message": "Solicitação de amizade enviada com sucesso",
+                        "status": "pending",
+                        "friendship_id": friendship.id,
+                    },
+                    status=status.HTTP_201_CREATED,
+                )
+
+            # Fallback (shouldn't be reached): create a fresh request.
+            Friendship.objects.filter(pk=friendship.pk).delete()
             friendship = Friendship.objects.create(
                 sender=request.user,
                 receiver=target_user,
                 status="pending",
             )
-
-        # Real-time WebSocket notify the target user
-        sender_prof, _ = Profile.objects.get_or_create(user=request.user)
-        notify_user_channel(
-            target_user.id,
-            "friend_request_received",
-            {
-                "request_id": friendship.id,
-                "sender": {
-                    "id": request.user.id,
-                    "username": request.user.username,
-                    "nickname": sender_prof.nickname,
-                    "avatar": sender_prof.get_avatar_url(request),
+            sender_prof = Profile.objects.get(user=request.user)
+            notify_user_channel(
+                target_user.id,
+                "friend_request_received",
+                {
+                    "request_id": friendship.id,
+                    "sender": {
+                        "id": request.user.id,
+                        "username": request.user.username,
+                        "nickname": sender_prof.nickname,
+                        "avatar": sender_prof.get_avatar_url(request),
+                    },
                 },
-            },
-        )
-
-        return Response(
-            {
-                "message": "Solicitação de amizade enviada com sucesso",
-                "status": "pending",
-                "friendship_id": friendship.id,
-            },
-            status=status.HTTP_201_CREATED,
-        )
+            )
+            return Response(
+                {
+                    "message": "Solicitação de amizade enviada com sucesso",
+                    "status": "pending",
+                    "friendship_id": friendship.id,
+                },
+                status=status.HTTP_201_CREATED,
+            )
 
 
 class FriendRespondView(APIView):
-    authentication_classes = [TokenAuthentication]
+    authentication_classes = AUTH_AUTHENTICATION
     permission_classes = [IsAuthenticated]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = "user_light"
 
     def post(self, request, request_id):
         action = (request.data.get("action") or "").lower().strip()
@@ -979,8 +1134,10 @@ class FriendRespondView(APIView):
 
 
 class FriendDeleteView(APIView):
-    authentication_classes = [TokenAuthentication]
+    authentication_classes = AUTH_AUTHENTICATION
     permission_classes = [IsAuthenticated]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = "user_light"
 
     def delete(self, request, friend_id):
         friendship = Friendship.objects.filter(

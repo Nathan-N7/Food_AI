@@ -5,6 +5,8 @@ import { registerSW } from 'virtual:pwa-register'
 
 //import './index.css'
 import App from './App.jsx'
+import { AuthProvider } from './context/AuthContext.jsx'
+import { PresenceProvider } from './context/PresenceContext.jsx'
 
 const updateSW = registerSW({
   onNeedRefresh() {
@@ -16,7 +18,11 @@ const updateSW = registerSW({
 createRoot(document.getElementById('root')).render(
   <StrictMode>
     <BrowserRouter>
-      <App />
+      <AuthProvider>
+        <PresenceProvider>
+          <App />
+        </PresenceProvider>
+      </AuthProvider>
     </BrowserRouter>
   </StrictMode>,
 )

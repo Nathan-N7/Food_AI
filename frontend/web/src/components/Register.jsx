@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { fetchJson } from '../lib/api.js'
 
 const API_URL = '/api'
 
@@ -20,35 +21,21 @@ const Register = () => {
     setMessage('Criando conta...')
 
     try {
-      const response = await fetch(
-        `${API_URL}/auth/register/`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            username,
-            email,
-            password,
-            usernickname
-          }),
+      await fetchJson(`${API_URL}/auth/register/`, {
+        method: 'POST',
+        body: {
+          username,
+          email,
+          password,
+          usernickname,
         },
-      )
-
-      const data = await response.json()
-
-      if (!response.ok) {
-        setMessage(data.error || 'Erro ao criar conta')
-        return
-      }
+      })
 
       setMessage('Conta criada com sucesso')
 
       navigate('/login')
     } catch (error) {
-      console.error(error)
-      setMessage('Não foi possível conectar ao backend')
+      setMessage(error.message || 'Erro ao criar conta')
     } finally {
       setLoading(false)
     }

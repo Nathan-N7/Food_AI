@@ -2,8 +2,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import './Login.css'
-
-const API_URL = '/api'
+import { useAuth } from '../context/AuthContext.jsx'
 
 const Login = () => {
   const [useremail, setUseremail] = useState('')
@@ -14,6 +13,7 @@ const Login = () => {
   const [loading, setLoading] = useState(false)
 
   const navigate = useNavigate()
+  const { login } = useAuth()
 
   async function handleLogin(event) {
     event.preventDefault()
@@ -22,48 +22,20 @@ const Login = () => {
     setMessage('Entrando...')
 
     try {
-      const response = await fetch(
-        `${API_URL}/auth/login/`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            useremail,
-            password,
-           
-          }),
-        },
-      )
-
-      const data = await response.json()
-
-      if (!response.ok) {
-        setMessage(data.error || 'Erro ao fazer login')
-        return
-      }
-
-      localStorage.setItem('token', data.token)
-
-      localStorage.setItem(
-        'user',
-        JSON.stringify(data.user),
-      )
+      const user = await login({
+        useremail,
+        password,
+      })
 
       setPassword('')
 
       setMessage(
-        `Login realizado: ${data.user.nickname || data.user.username}`,
+        `Login realizado: ${user?.nickname || user?.username}`,
       )
 
       navigate('/dashboard')
     } catch (error) {
-      console.error(error)
-
-      setMessage(
-        'Não foi possível conectar ao backend',
-      )
+      setMessage(error.message || 'Erro ao fazer login')
     } finally {
       setLoading(false)
     }
@@ -159,4 +131,3 @@ const Login = () => {
 }
 
 export default Login
-

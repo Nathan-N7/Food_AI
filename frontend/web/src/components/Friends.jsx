@@ -1,13 +1,13 @@
 import { useState, useEffect, useCallback } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 import Header from './Header'
 import { usePresence } from '../hooks/usePresence'
+import { fetchJson } from '../lib/api.js'
 import './Friends.css'
 
 const API_URL = '/api'
 
 const Friends = () => {
-  const navigate = useNavigate()
   const { isConnected, isFriendOnline, notifications } = usePresence()
 
   const [activeTab, setActiveTab] = useState('friends') // 'friends' | 'search' | 'requests'
@@ -19,45 +19,30 @@ const Friends = () => {
   const [searchLoading, setSearchLoading] = useState(false)
   const [actionLoading, setActionLoading] = useState({})
 
-  const token = localStorage.getItem('token')
-
   const fetchFriends = useCallback(async () => {
-    if (!token) {
-      navigate('/login')
-      return
-    }
-
     try {
       setLoading(true)
-      const res = await fetch(`${API_URL}/friends/`, {
-        headers: { Authorization: `Token ${token}` },
-      })
-      if (res.ok) {
-        const data = await res.json()
-        setFriends(data)
-      }
+      const data = await fetchJson(`${API_URL}/friends/`)
+      setFriends(data)
     } catch (err) {
-      console.error('Erro ao buscar amigos:', err)
+      if (err.status !== 401) {
+        console.error('Erro ao buscar amigos:', err)
+      }
     } finally {
       setLoading(false)
     }
-  }, [token, navigate])
+  }, [])
 
   const fetchRequests = useCallback(async () => {
-    if (!token) return
-
     try {
-      const res = await fetch(`${API_URL}/friends/requests/`, {
-        headers: { Authorization: `Token ${token}` },
-      })
-      if (res.ok) {
-        const data = await res.json()
-        setRequests(data)
-      }
+      const data = await fetchJson(`${API_URL}/friends/requests/`)
+      setRequests(data)
     } catch (err) {
-      console.error('Erro ao buscar solicitações:', err)
+      if (err.status !== 401) {
+        console.error('Erro ao buscar solicitações:', err)
+      }
     }
-  }, [token])
+  }, [])
 
   useEffect(() => {
     fetchFriends()
@@ -80,85 +65,67 @@ const Friends = () => {
     }
 
     const timer = setTimeout(async () => {
-      if (!token) return
       try {
         setSearchLoading(true)
-        const res = await fetch(
+        const data = await fetchJson(
           `${API_URL}/users/search/?q=${encodeURIComponent(searchQuery.trim())}`,
-          {
-            headers: { Authorization: `Token ${token}` },
-          }
         )
-        if (res.ok) {
-          const data = await res.json()
-          setSearchResults(data)
-        }
+        setSearchResults(data)
       } catch (err) {
-        console.error('Erro na busca:', err)
+        if (err.status !== 401) {
+          console.error('Erro na busca:', err)
+        }
       } finally {
         setSearchLoading(false)
       }
     }, 300)
 
     return () => clearTimeout(timer)
-  }, [searchQuery, token])
+  }, [searchQuery])
 
   async function handleSendRequest(userId) {
-    if (!token) return
     setActionLoading((prev) => ({ ...prev, [userId]: true }))
 
     try {
-      const res = await fetch(`${API_URL}/friends/request/${userId}/`, {
+      const data = await fetchJson(`${API_URL}/friends/request/${userId}/`, {
         method: 'POST',
-        headers: { Authorization: `Token ${token}` },
       })
-      const data = await res.json()
-      if (res.ok) {
-        setSearchResults((prev) =>
-          prev.map((u) =>
-            u.id === userId
-              ? {
-                  ...u,
-                  friendship_status: data.status === 'accepted' ? 'accepted' : 'pending_sent',
-                  friendship_id: data.friendship_id,
-                }
-              : u
-          )
+
+      setSearchResults((prev) =>
+        prev.map((u) =>
+          u.id === userId
+            ? {
+                ...u,
+                friendship_status: data.status === 'accepted' ? 'accepted' : 'pending_sent',
+                friendship_id: data.friendship_id,
+              }
+            : u
         )
-        fetchRequests()
-        if (data.status === 'accepted') fetchFriends()
-      } else {
-        alert(data.error || 'Erro ao enviar solicitação')
-      }
-    } catch {
-      alert('Erro de conexão')
+      )
+      fetchRequests()
+      if (data.status === 'accepted') fetchFriends()
+    } catch (err) {
+      alert(err.message || 'Erro ao enviar solicitação')
     } finally {
       setActionLoading((prev) => ({ ...prev, [userId]: false }))
     }
   }
 
   async function handleRespondRequest(requestId, action) {
-    if (!token) return
     setActionLoading((prev) => ({ ...prev, [requestId]: true }))
 
     try {
-      const res = await fetch(`${API_URL}/friends/respond/${requestId}/`, {
+      await fetchJson(`${API_URL}/friends/respond/${requestId}/`, {
         method: 'POST',
-        headers: {
-          Authorization: `Token ${token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ action }),
+        body: { action },
       })
 
-      if (res.ok) {
-        setRequests((prev) => ({
-          ...prev,
-          received: prev.received.filter((r) => r.id !== requestId),
-        }))
-        if (action === 'accept') {
-          fetchFriends()
-        }
+      setRequests((prev) => ({
+        ...prev,
+        received: prev.received.filter((r) => r.id !== requestId),
+      }))
+      if (action === 'accept') {
+        fetchFriends()
       }
     } catch {
       alert('Erro ao responder solicitação')
@@ -169,16 +136,12 @@ const Friends = () => {
 
   async function handleRemoveFriend(friendId, friendName) {
     if (!confirm(`Deseja remover ${friendName} dos seus amigos?`)) return
-    if (!token) return
 
     try {
-      const res = await fetch(`${API_URL}/friends/${friendId}/`, {
+      await fetchJson(`${API_URL}/friends/${friendId}/`, {
         method: 'DELETE',
-        headers: { Authorization: `Token ${token}` },
       })
-      if (res.ok) {
-        setFriends((prev) => prev.filter((f) => f.id !== friendId))
-      }
+      setFriends((prev) => prev.filter((f) => f.id !== friendId))
     } catch {
       alert('Erro ao remover amigo')
     }

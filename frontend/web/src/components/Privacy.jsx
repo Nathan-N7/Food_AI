@@ -133,7 +133,7 @@ const Privacy = () => {
           <li>All connections use HTTPS with TLS encryption.</li>
           <li>Passwords are hashed using Django's built-in PBKDF2 algorithm with a salt.</li>
           <li>The database is not exposed to the public internet.</li>
-          <li>Authentication tokens are required for all protected endpoints.</li>
+          <li>Authentication is verified via secure session cookies on all protected endpoints.</li>
         </ul>
         <p>
           As this is an academic project, it uses a self-signed SSL certificate.
@@ -160,12 +160,17 @@ const Privacy = () => {
       </section>
 
       <section style={{ marginBottom: '32px' }}>
-        <h2>8. Cookies and Local Storage</h2>
+        <h2>8. Cookies and Session Data</h2>
         <p>
-          Food AI uses browser <strong>localStorage</strong> to store your
-          authentication token and basic user information (username and ID).
-          This data is stored only on your device and is cleared when you log out.
-          We do not use tracking cookies or third-party analytics.
+          Food AI uses <strong>httpOnly session cookies</strong> to keep you
+          signed in. When you log in, the server establishes a secure session
+          stored in a cookie on your device. These cookies are automatically
+          cleared when you log out and expire when your session ends.
+        </p>
+        <p>
+          To protect against cross-site request forgery (CSRF), the application
+          also uses a cross-site request forgery token cookie alongside the
+          session. We do not use tracking cookies or third-party analytics.
         </p>
       </section>
 

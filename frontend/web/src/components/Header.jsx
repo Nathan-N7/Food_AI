@@ -1,30 +1,16 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useLocation, Link } from 'react-router-dom'
 import './Header.css'
-import Friends from './Friends.jsx'
+import { useAuth } from '../context/AuthContext.jsx'
 
 const Header = ({ user: customUser, avatarUrl = null }) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
-  const [currentUser, setCurrentUser] = useState(customUser || null)
+  // user comes from context; optional prop overrides for page-specific display
+  const { user: authUser, logout } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
 
-  // Sincroniza com localStorage se não foi passado via prop
-  useEffect(() => {
-    if (customUser) {
-      setCurrentUser(customUser)
-      return
-    }
-
-    const saved = localStorage.getItem('user')
-    if (saved) {
-      try {
-        setCurrentUser(JSON.parse(saved))
-      } catch {
-        setCurrentUser(null)
-      }
-    }
-  }, [customUser])
+  const currentUser = customUser || authUser
 
   // Fecha o menu ao trocar de rota
   useEffect(() => {
@@ -42,11 +28,13 @@ const Header = ({ user: customUser, avatarUrl = null }) => {
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [])
 
-  function handleLogout() {
-    localStorage.removeItem('token')
-    localStorage.removeItem('user')
-    setIsMenuOpen(false)
-    navigate('/login')
+  async function handleLogout() {
+    try {
+      await logout()
+    } finally {
+      setIsMenuOpen(false)
+      navigate('/login')
+    }
   }
 
   // Define nome de exibição e iniciais do avatar

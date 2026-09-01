@@ -9,6 +9,7 @@ python-dotenv==1.2.3
 
 pydantic==2.13.4
 langgraph==1.2.11
+langgraph-checkpoint-postgres==2.0.9
 
 replicate==1.0.7
 requests==2.34.2
@@ -20,4 +21,5 @@ ultralytics==8.4.121
 
 gunicorn==23.0.0
 channels>=4.0.0
+channels-redis>=4.2.0
 daphne>=4.1.0

@@ -1,6 +1,6 @@
 # Fix: Segurança (tokens), Concorrência de dados e Conexão entre usuários
 
-- **Status:** Implementing
+- **Status:** Needs Fixes
 - **Branch:** task/fix-security-concurrency
 - **Goal:** Migrar autenticação de `localStorage` (DRF authtoken) para **httpOnly cookie + sessão** com CSRF; corrigir race conditions em amizades/perfil; persistir presença via Redis e estado de geração via PostgresSaver; eliminar IDOR e vazamento de token; ajustar throttling; centralizar auth no frontend com AuthContext. Escopo: **segurança + concorrência + presença** (Traefik fica fora desta rodada).
 - **Context:** O código completo da app (auth, amigos, presença WebSocket, geração) vive nas branches remotas; a base decidida é **`origin/update_frontend`**. `main` é só um protótipo minimalista. Repositório remoto pertence a `Nathan-N7`; git local configurado como `Nathan-N7 <Nathan-N7@users.noreply.github.com>`. Decisões do usuário: friendship normalizado `sender<=receiver`; Redis para channel layer + PostgresSaver para checkpointer; escopo atual = segurança+concorrência+presença.
@@ -32,10 +32,10 @@
 ## Validation
 ```
 docker compose -f docker-compose.yml config
-python manage.py check         # no backend docker
-python manage.py makemigrations --check --dry-run
-(pytest)                       # se testes existirem
-npm run build                  # no frontend/web
+python manage.py check            # no diretório backend/
+python manage.py makemigrations --check --dry-run   # em backend/
+pytest                            # em backend/ (se houver testes)
+npm run build                     # no diretório frontend/web/
 ```
 QA deve confirmar: (1) nenhum `localStorage.setItem('token'|'user')` restante e nenhum `Authorization: Token`/`?token=` em qualquer arquivo (grep); (2) `RegenerateImageView` exige autenticação + posse do `thread_id`; (3) `docker compose config` válido com serviço `redis`; (4) migration de friendship aplicada com sucesso em dados existentes (backfill renorma sem erro) e a constraint ordenada presente; (5) `import` de PostgresSaver funciona (dependência `langgraph-checkpoint-postgres` instalada); (6) END-TO-END: login (cookie httpOnly) → gerar → regenerar → amigos → presença WebSocket funcionando com 2 usuários; (7) `npm run build` passa.
 
@@ -43,4 +43,34 @@ QA deve confirmar: (1) nenhum `localStorage.setItem('token'|'user')` restante e 
 <Ainda não iniciada — preencher se pausada.>
 
 ## Validation Log
+### 2026-09-01T01:18:20.661Z
+
+- `pytest)                       # se testes existirem` → exit 2
+```
+/bin/sh: -c: line 1: syntax error near unexpected token `)'
+/bin/sh: -c: line 1: `pytest)                       # se testes existirem'
+```
+
+- `npm run build                  # no frontend/web` → exit 254
+```
+npm error code ENOENT
+npm error syscall open
+npm error path /home/showoff/Documents/person/Food_AI/package.json
+npm error errno -2
+npm error enoent Could not read package.json: Error: ENOENT: no such file or directory, open '/home/showoff/Documents/person/Food_AI/package.json'
+npm error enoent This is related to npm not being able to find a file.
+npm error enoent
+npm error A complete log of this run can be found in: /home/showoff/.npm/_logs/2026-09-01T01_18_20_761Z-debug-0.log
+```
+
+- `docker compose -f docker-compose.yml config` → SKIPPED (not in allowlist)
+
+- `python manage.py check         # no backend docker` → SKIPPED (not in allowlist)
+
+- `python manage.py makemigrations --check --dry-run` → SKIPPED (not in allowlist)
+
+- `QA deve confirmar: (1) nenhum `localStorage.setItem('token'|'user')` restante e nenhum `Authorization: Token`/`?token=` em qualquer arquivo (grep); (2) `RegenerateImageView` exige autenticação + posse do `thread_id`; (3) `docker compose config` válido com serviço `redis`; (4) migration de friendship aplicada com sucesso em dados existentes (backfill renorma sem erro) e a constraint ordenada presente; (5) `import` de PostgresSaver funciona (dependência `langgraph-checkpoint-postgres` instalada); (6) END-TO-END: login (cookie httpOnly) → gerar → regenerar → amigos → presença WebSocket funcionando com 2 usuários; (7) `npm run build` passa.` → SKIPPED (not in allowlist)
+
+- `<timestamped QA results — preencher após execução.>` → SKIPPED (not in allowlist)
+
 <timestamped QA results — preencher após execução.>

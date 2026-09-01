@@ -14,12 +14,18 @@ import UserProfile from './components/UserProfile.jsx'
 import Friends from './components/Friends.jsx'
 import Privacy from './components/Privacy.jsx'
 import Terms from './components/Terms.jsx'
+import { useAuth } from './context/AuthContext.jsx'
 
 
 function ProtectedRoute({ children }) {
-  const token = localStorage.getItem('token')
+  const { isAuthenticated, loading } = useAuth()
 
-  if (!token) {
+  // Wait for the /me bootstrap before deciding where to route.
+  if (loading) {
+    return null
+  }
+
+  if (!isAuthenticated) {
     return <Navigate to="/login" replace />
   }
 

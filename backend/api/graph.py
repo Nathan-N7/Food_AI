@@ -1,6 +1,15 @@
+import os
 from typing import TypedDict
 from langgraph.graph import StateGraph, START, END
-from langgraph.checkpoint.memory import MemorySaver
+
+try:
+    from langgraph.checkpoint.postgres import PostgresSaver
+    from psycopg import Connection
+    from psycopg.rows import dict_row
+except ImportError:  # pragma: no cover - guarded at import time
+    PostgresSaver = None
+    Connection = None
+    dict_row = None
 
 from .services.gemini_analyzer import gemini_analyzer
 from .services.prompt_builder import build_flux_prompt
@@ -16,6 +25,43 @@ class FoodPipelineState(TypedDict, total=False):
     prompt: dict | None
     url_image: str | None
     error: str | None
+
+
+def build_checkpointer():
+    """
+    Build a Postgres-backed checkpointer (durable thread state) or fall back to
+    an in-memory one when the postgres checkpoint package/DB is unavailable
+    (e.g. local dev without a running database).
+    """
+    if PostgresSaver is None:
+        return None
+
+    db = os.getenv("POSTGRES_DB")
+    user = os.getenv("POSTGRES_USER")
+    password = os.getenv("POSTGRES_PASSWORD")
+    host = os.getenv("POSTGRES_HOST", "127.0.0.1")
+    port = os.getenv("POSTGRES_PORT", "5432")
+
+    if not (db and user and password):
+        return None
+
+    conn_string = (
+        f"postgresql://{user}:{password}@{host}:{port}/{db}"
+    )
+
+    try:
+        # PostgresSaver needs an autocommit connection.
+        conn = Connection.connect(
+            conn_string,
+            autocommit=True,
+            row_factory=dict_row,
+        )
+        checkpointer = PostgresSaver(conn)
+        # idempotent: creates the checkpoint tables if missing
+        checkpointer.setup()
+        return checkpointer
+    except Exception:
+        return None
 
 
 def analyze_image_node(state: FoodPipelineState):
@@ -43,15 +89,6 @@ def build_prompt_node(state: FoodPipelineState):
         "prompt": prompt_model.model_dump()
     }
 
-# def build_prompt_node(state: FoodPipelineState):
-#     prompt = build_flux_prompt(state["analysis"])
-
-#     prompt_model = FluxPrompt.model_validate(prompt)
-
-#     return {
-#         "prompt": prompt_model.model_dump()
-#     }
-
 
 def generate_image_node(state: FoodPipelineState):
     url_image = flux_image_generate(
@@ -76,7 +113,11 @@ def create_food_graph():
     graph.add_edge("build_prompt", "generate_image")
     graph.add_edge("generate_image", END)
 
-    checkpointer = MemorySaver()
+    checkpointer = build_checkpointer()
+
+    if checkpointer is None:
+        from langgraph.checkpoint.memory import MemorySaver
+        checkpointer = MemorySaver()
 
     return graph.compile(checkpointer=checkpointer)
 

@@ -1,49 +1,24 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import Header from './Header'
+import { fetchJson } from '../lib/api.js'
 
 const API_URL = '/api'
 
 const History = () => {
   const navigate = useNavigate()
-
   const [history, setHistory] = useState([])
   const [loading, setLoading] = useState(true)
   const [message, setMessage] = useState('')
 
   useEffect(() => {
     async function loadHistory() {
-      const token = localStorage.getItem('token')
-
-      if (!token) {
-        navigate('/login')
-        return
-      }
-
       try {
-        const response = await fetch(
-          `${API_URL}/generations/`,
-          {
-            headers: {
-              Authorization: `Token ${token}`,
-            },
-          },
-        )
-
-        const data = await response.json()
-
-        if (!response.ok) {
-          setMessage(
-            data.error || 'Erro ao carregar histórico',
-          )
-          return
-        }
-
+        const data = await fetchJson(`${API_URL}/generations/`)
         setHistory(data)
       } catch (error) {
-        console.error(error)
         setMessage(
-          'Não foi possível conectar ao backend',
+          error.message || 'Erro ao carregar histórico',
         )
       } finally {
         setLoading(false)
@@ -51,43 +26,23 @@ const History = () => {
     }
 
     loadHistory()
-  }, [navigate])
+  }, [])
 
   function handleBack() {
     navigate('/generate')
   }
 
   async function handleDelete(generationId) {
-    const token = localStorage.getItem('token')
-
-    if (!token) {
-      setMessage('Faça login novamente')
-      return
-    }
-
     try {
-      const response = await fetch(
-        `${API_URL}/generations/${generationId}/`,
-        {
-          method: 'DELETE',
-          headers: {
-            Authorization: `Token ${token}`,
-          },
-        },
-      )
-
-      if (!response.ok) {
-        const data = await response.json()
-        setMessage(data.error || 'Erro ao excluir')
-        return
-      }
+      await fetchJson(`${API_URL}/generations/${generationId}/`, {
+        method: 'DELETE',
+      })
 
       // Remove do estado local
-      setHistory(history.filter((gen) => gen.id !== generationId))
+      setHistory((prev) => prev.filter((gen) => gen.id !== generationId))
       setMessage('Geração excluída com sucesso')
     } catch (error) {
-      console.error('Erro ao excluir:', error)
-      setMessage('Erro de conexão')
+      setMessage(error.status === 401 ? 'Faça login novamente' : 'Erro de conexão')
     }
   }
 

@@ -1,17 +1,9 @@
 import { useNavigate } from 'react-router-dom'
-import { useState } from 'react'
 import Header from './Header'
+import { useAuth } from '../context/AuthContext.jsx'
 
 const Dashboard = () => {
-  const [user] = useState(() => {
-    const savedUser = localStorage.getItem('user')
-    if (!savedUser) return null
-    try {
-      return JSON.parse(savedUser)
-    } catch {
-      return null
-    }
-  })
+  const { user } = useAuth()
 
   const navigate = useNavigate()
   const displayName = user?.nickname || user?.username || 'Usuário'

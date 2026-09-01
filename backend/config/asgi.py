@@ -6,15 +6,18 @@ os.environ.setdefault("DJANGO_SETTINGS_MODULE", "config.settings")
 # Initialize Django ASGI application early to ensure AppRegistry is ready
 django_asgi_app = get_asgi_application()
 
+from channels.auth import AuthMiddlewareStack
+from channels.security.websocket import AllowedHostsOriginValidator
 from channels.routing import ProtocolTypeRouter, URLRouter
-from api.middleware import TokenAuthMiddlewareStack
 from api.routing import websocket_urlpatterns
 
 application = ProtocolTypeRouter(
     {
         "http": django_asgi_app,
-        "websocket": TokenAuthMiddlewareStack(
-            URLRouter(websocket_urlpatterns)
+        "websocket": AllowedHostsOriginValidator(
+            AuthMiddlewareStack(
+                URLRouter(websocket_urlpatterns)
+            )
         ),
     }
 )

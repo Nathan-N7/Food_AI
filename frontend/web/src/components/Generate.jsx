@@ -1,25 +1,12 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import Header from './Header'
+import { uploadForm } from '../lib/api.js'
 
 const API_URL = '/api'
 
 const Generate = () => {
   const navigate = useNavigate()
-
-  const [user] = useState(() => {
-    const savedUser = localStorage.getItem('user')
-
-    if (!savedUser) {
-      return null
-    }
-
-    try {
-      return JSON.parse(savedUser)
-    } catch {
-      return null
-    }
-  })
 
   const [image, setImage] = useState(null)
   const [result, setResult] = useState(null)
@@ -28,11 +15,17 @@ const Generate = () => {
   const [preview, setPreview] = useState(null)
   const [progress, setProgress] = useState(0)
 
+  // Revoke object URLs on unmount to avoid a memory leak.
+  useEffect(() => {
+    return () => {
+      if (preview) URL.revokeObjectURL(preview)
+    }
+  }, [preview])
+
   const notificarUsuario = (mensagem) => {
     // 1. Verifica se o navegador suporta notificações
     if (!("Notification" in window)) {
-      console.log("Este navegador não suporta notificações.");
-      return;
+      return
     }
     // 2. Se já tem permissão, dispara a notificação
     if (Notification.permission === "granted") {
@@ -57,14 +50,6 @@ const Generate = () => {
   async function handleGenerate(event) {
     event.preventDefault()
 
-    const token = localStorage.getItem('token')
-
-    if (!token) {
-      setMessage('Usuário não autenticado')
-      navigate('/login')
-      return
-    }
-
     if (!image) {
       setMessage('Selecione uma imagem')
       return
@@ -82,46 +67,24 @@ const Generate = () => {
     const formData = new FormData()
     formData.append('image', image)
 
-    const xhr = new XMLHttpRequest()
-
-    // Atualiza a % durante o upload
-    xhr.upload.onprogress = (event) => {
-      if (event.lengthComputable) {
-        const percent = Math.round((event.loaded / event.total) * 100)
-        setProgress(percent)
-      }
-    }
-    // Quando o servidor responde
-    xhr.onload = () => {
-      try {
-        const data = JSON.parse(xhr.responseText)
-        if (xhr.status >= 200 && xhr.status < 300) {
-          setResult(data)
-          setMessage('Imagem gerada com sucesso')
-          notificarUsuario("Sua imagem está pronta! Venha ver o resultado.");
-        } else {
-          setMessage(data.error || 'Erro ao gerar imagem')
-          notificarUsuario("Ops, ocorreu um erro ao gerar sua imagem.");
-        }
-      } catch {
-        setMessage('Resposta inválida do servidor')
-      } finally {
-        setGenerating(false)
-      }
-    }
-    // Se a conexão cair
-    xhr.onerror = () => {
-      setMessage('Não foi possível concluir a geração')
+    try {
+      const data = await uploadForm(`${API_URL}/generate/`, formData, {
+        onProgress: setProgress,
+      })
+      setResult(data)
+      setMessage('Imagem gerada com sucesso')
+      notificarUsuario("Sua imagem está pronta! Venha ver o resultado.")
+    } catch (error) {
+      setMessage(error.status === 401 ? 'Faça login novamente' : (error.message || 'Erro ao gerar imagem'))
+      notificarUsuario("Ops, ocorreu um erro ao gerar sua imagem.")
+    } finally {
       setGenerating(false)
     }
-    xhr.open('POST', `${API_URL}/generate/`)
-    xhr.setRequestHeader('Authorization', `Token ${token}`)
-    xhr.send(formData)
   }
 
   return (
     <>
-      <Header user={user} />
+      <Header />
       <main style={{ maxWidth: '700px', margin: '2rem auto', padding: '0 1.25rem 3rem' }}>
         <h2>Gerar imagem</h2>
 
@@ -142,9 +105,10 @@ const Generate = () => {
               type="file"
               accept="image/*"
               onChange={(event) => {
-                setImage(event.target.files?.[0] || null)
+                const file = event.target.files?.[0] || null
+                setImage(file)
                 if (preview) URL.revokeObjectURL(preview)
-                setPreview(event.target.files?.[0] ? URL.createObjectURL(event.target.files?.[0]) : null)
+                setPreview(file ? URL.createObjectURL(file) : null)
               }}
             />
           </div>

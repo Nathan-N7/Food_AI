@@ -9,15 +9,22 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 load_dotenv(BASE_DIR / ".env")
 
 
-SECRET_KEY = os.getenv(
-    "DJANGO_SECRET_KEY",
-    "development-only-secret-key",
-)
-
 DEBUG = (
     os.getenv("DJANGO_DEBUG", "False").lower()
     == "true"
 )
+
+SECRET_KEY = os.environ.get(
+    "DJANGO_SECRET_KEY",
+    # Dev fallback ONLY when DEBUG is enabled; missing in production is fatal.
+    ("development-only-secret-key" if DEBUG else None),
+)
+
+if not SECRET_KEY:
+    raise RuntimeError(
+        "DJANGO_SECRET_KEY is required in production. Set it in the "
+        "environment (see backend/.env.example)."
+    )
 
 ALLOWED_HOSTS = [
     host.strip()
@@ -33,24 +40,32 @@ SECURE_PROXY_SSL_HEADER = (
     "https",
 )
 
-
+# Comma-separated env-driven origins, with sensible dev defaults.
 CORS_ALLOWED_ORIGINS = [
-    "http://localhost:8501",
-    "http://127.0.0.1:8501",
-    "http://localhost:5173",
-    "http://127.0.0.1:5173",
-    "http://localhost:8080",
-    "http://127.0.0.1:8080",
-    "https://localhost:8443",
-    "https://127.0.0.1:8443",
+    origin.strip()
+    for origin in os.getenv(
+        "DJANGO_CORS_ALLOWED_ORIGINS",
+        (
+            "http://localhost:8501,http://127.0.0.1:8501,"
+            "http://localhost:5173,http://127.0.0.1:5173,"
+            "http://localhost:8080,http://127.0.0.1:8080,"
+            "https://localhost:8443,https://127.0.0.1:8443"
+        ),
+    ).split(",")
+    if origin.strip()
 ]
 
 CSRF_TRUSTED_ORIGINS = [
-    "http://localhost:8080",
-    "http://127.0.0.1:8080",
-    "https://localhost:8443",
-    "https://127.0.0.1:8443",
-    "http://backend:8000",
+    origin.strip()
+    for origin in os.getenv(
+        "DJANGO_CSRF_TRUSTED_ORIGINS",
+        (
+            "http://localhost:8080,http://127.0.0.1:8080,"
+            "https://localhost:8443,https://127.0.0.1:8443,"
+            "http://backend:8000"
+        ),
+    ).split(",")
+    if origin.strip()
 ]
 
 
@@ -66,7 +81,6 @@ INSTALLED_APPS = [
     # libs externas
     "rest_framework",
     "corsheaders",
-    "rest_framework.authtoken",
     "channels",
 
     # apps locais
@@ -74,11 +88,14 @@ INSTALLED_APPS = [
 ]
 
 REST_FRAMEWORK = {
-    'DEFAULT_THROTTLE_CLASSES': [
-        'rest_framework.throttling.UserRateThrottle'
+    'DEFAULT_AUTHENTICATION_CLASSES': [
+        'rest_framework.authentication.SessionAuthentication',
     ],
     'DEFAULT_THROTTLE_RATES': {
-        'user': '10/hour'
+        'anon': '20/hour',
+        'user_generate': '30/hour',
+        'user_regenerate': '20/hour',
+        'user_light': '120/hour',
     }
 }
 
@@ -93,6 +110,24 @@ MIDDLEWARE = [
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
+
+# CSRF / session / CORS cookie hardening.
+# CSRF token must be readable by JS so the SPA can send the X-CSRFToken header.
+CSRF_COOKIE_HTTPONLY = False
+CSRF_COOKIE_SAMESITE = "Lax"
+SESSION_COOKIE_HTTPONLY = True
+SESSION_COOKIE_SAMESITE = "Lax"
+CORS_ALLOW_CREDENTIALS = True
+
+# Production hardening (enabled when DEBUG=False). nginx sets X-Forwarded-Proto
+# (see SECURE_PROXY_SSL_HEADER above), so SECURE_SSL_REDIRECT won't loop.
+if not DEBUG:
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+    SECURE_SSL_REDIRECT = True
+    SECURE_HSTS_SECONDS = 31536000
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+    SECURE_HSTS_PRELOAD = True
 
 
 ROOT_URLCONF = "config.urls"
@@ -117,9 +152,14 @@ TEMPLATES = [
 WSGI_APPLICATION = "config.wsgi.application"
 ASGI_APPLICATION = "config.asgi.application"
 
+REDIS_HOST = os.getenv("REDIS_HOST", "redis")
+
 CHANNEL_LAYERS = {
     "default": {
-        "BACKEND": "channels.layers.InMemoryChannelLayer"
+        "BACKEND": "channels_redis.core.RedisChannelLayer",
+        "CONFIG": {
+            "hosts": [(REDIS_HOST, 6379)],
+        },
     }
 }
 

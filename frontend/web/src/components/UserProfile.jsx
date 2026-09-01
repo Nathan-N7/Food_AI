@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import Header from './Header'
 import { usePresence } from '../hooks/usePresence'
+import { fetchJson } from '../lib/api.js'
 import './Profile.css'
 
 const API_URL = '/api'
@@ -21,63 +22,35 @@ const UserProfile = () => {
   }, [id])
 
   async function fetchUserProfile() {
-    const token = localStorage.getItem('token')
-    if (!token) {
-      navigate('/login')
-      return
-    }
-
     try {
       setLoading(true)
-      const response = await fetch(`${API_URL}/users/${id}/`, {
-        headers: {
-          Authorization: `Token ${token}`,
-        },
-      })
-
-      if (!response.ok) {
-        if (response.status === 404) {
-          setMessage('Usuário não encontrado.')
-        } else {
-          setMessage('Erro ao carregar dados do usuário.')
-        }
-        return
-      }
-
-      const data = await response.json()
+      const data = await fetchJson(`${API_URL}/users/${id}/`)
       setUserData(data)
     } catch (err) {
-      setMessage('Erro de conexão ao buscar perfil.')
+      if (err.status === 404) {
+        setMessage('Usuário não encontrado.')
+      } else {
+        setMessage('Erro ao carregar dados do usuário.')
+      }
     } finally {
       setLoading(false)
     }
   }
 
   async function handleSendFriendRequest() {
-    const token = localStorage.getItem('token')
-    if (!token) return
-
     try {
       setActionLoading(true)
-      const response = await fetch(`${API_URL}/friends/request/${id}/`, {
+      const data = await fetchJson(`${API_URL}/friends/request/${id}/`, {
         method: 'POST',
-        headers: {
-          Authorization: `Token ${token}`,
-        },
       })
 
-      const data = await response.json()
-      if (response.ok) {
-        setUserData((prev) => ({
-          ...prev,
-          friendship_status: data.status === 'accepted' ? 'accepted' : 'pending_sent',
-          friendship_id: data.friendship_id,
-        }))
-      } else {
-        alert(data.error || 'Erro ao enviar solicitação')
-      }
-    } catch {
-      alert('Erro de conexão')
+      setUserData((prev) => ({
+        ...prev,
+        friendship_status: data.status === 'accepted' ? 'accepted' : 'pending_sent',
+        friendship_id: data.friendship_id,
+      }))
+    } catch (err) {
+      alert(err.message || 'Erro ao enviar solicitação')
     } finally {
       setActionLoading(false)
     }
@@ -85,26 +58,18 @@ const UserProfile = () => {
 
   async function handleRespondFriendRequest(action) {
     if (!userData?.friendship_id) return
-    const token = localStorage.getItem('token')
-    if (!token) return
 
     try {
       setActionLoading(true)
-      const response = await fetch(`${API_URL}/friends/respond/${userData.friendship_id}/`, {
+      await fetchJson(`${API_URL}/friends/respond/${userData.friendship_id}/`, {
         method: 'POST',
-        headers: {
-          Authorization: `Token ${token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ action }),
+        body: { action },
       })
 
-      if (response.ok) {
-        setUserData((prev) => ({
-          ...prev,
-          friendship_status: action === 'accept' ? 'accepted' : 'none',
-        }))
-      }
+      setUserData((prev) => ({
+        ...prev,
+        friendship_status: action === 'accept' ? 'accepted' : 'none',
+      }))
     } catch {
       alert('Erro de conexão')
     } finally {
@@ -114,25 +79,18 @@ const UserProfile = () => {
 
   async function handleRemoveFriend() {
     if (!confirm('Deseja realmente desfazer a amizade?')) return
-    const token = localStorage.getItem('token')
-    if (!token) return
 
     try {
       setActionLoading(true)
-      const response = await fetch(`${API_URL}/friends/${id}/`, {
+      await fetchJson(`${API_URL}/friends/${id}/`, {
         method: 'DELETE',
-        headers: {
-          Authorization: `Token ${token}`,
-        },
       })
 
-      if (response.ok) {
-        setUserData((prev) => ({
-          ...prev,
-          friendship_status: 'none',
-          friendship_id: null,
-        }))
-      }
+      setUserData((prev) => ({
+        ...prev,
+        friendship_status: 'none',
+        friendship_id: null,
+      }))
     } catch {
       alert('Erro ao remover amigo')
     } finally {

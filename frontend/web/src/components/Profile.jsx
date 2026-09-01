@@ -1,12 +1,11 @@
-import { useState, useEffect, useRef } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import Header from './Header'
+import { fetchJson } from '../lib/api.js'
 import './Profile.css'
 
 const API_URL = '/api'
 
 const Profile = () => {
-  const navigate = useNavigate()
   const fileInputRef = useRef(null)
 
   const [loading, setLoading] = useState(true)
@@ -28,40 +27,17 @@ const Profile = () => {
   const [newPassword, setNewPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
 
-  useEffect(() => {
-    fetchProfile()
-  }, [])
-
-  async function fetchProfile() {
-    const token = localStorage.getItem('token')
-    if (!token) {
-      navigate('/login')
-      return
-    }
-
+  const fetchProfile = useCallback(async () => {
     try {
       setLoading(true)
-      const response = await fetch(`${API_URL}/users/profile/`, {
-        headers: {
-          Authorization: `Token ${token}`,
-        },
-      })
+      const data = await fetchJson(`${API_URL}/users/profile/`)
 
-      if (!response.ok) {
-        if (response.status === 401) {
-          navigate('/login')
-          return
-        }
-        throw new Error('Erro ao carregar perfil')
-      }
-
-      const data = await response.json()
       setProfileData(data)
       setNickname(data.nickname || '')
       setEmail(data.email || '')
       setBio(data.bio || '')
       setAvatarPreview(data.avatar || null)
-    } catch (err) {
+    } catch {
       setMessage({
         text: 'Não foi possível carregar os dados do perfil.',
         type: 'error',
@@ -69,7 +45,20 @@ const Profile = () => {
     } finally {
       setLoading(false)
     }
-  }
+  }, [])
+
+  useEffect(() => {
+    fetchProfile()
+  }, [fetchProfile])
+
+  // Revoke the blob URL for the avatar preview on unmount (minor leak).
+  useEffect(() => {
+    return () => {
+      if (avatarPreview && avatarPreview.startsWith('blob:')) {
+        URL.revokeObjectURL(avatarPreview)
+      }
+    }
+  }, [avatarPreview])
 
   function handleAvatarChange(e) {
     const file = e.target.files?.[0]
@@ -93,11 +82,17 @@ const Profile = () => {
 
     setAvatarFile(file)
     setRemoveAvatar(false)
+    if (avatarPreview && avatarPreview.startsWith('blob:')) {
+      URL.revokeObjectURL(avatarPreview)
+    }
     setAvatarPreview(URL.createObjectURL(file))
   }
 
   function handleRemoveAvatar() {
     setAvatarFile(null)
+    if (avatarPreview && avatarPreview.startsWith('blob:')) {
+      URL.revokeObjectURL(avatarPreview)
+    }
     setAvatarPreview(null)
     setRemoveAvatar(true)
     if (fileInputRef.current) fileInputRef.current.value = ''
@@ -112,12 +107,6 @@ const Profile = () => {
         text: 'A nova senha e a confirmação não coincidem.',
         type: 'error',
       })
-      return
-    }
-
-    const token = localStorage.getItem('token')
-    if (!token) {
-      navigate('/login')
       return
     }
 
@@ -140,23 +129,10 @@ const Profile = () => {
         formData.append('new_password', newPassword)
       }
 
-      const response = await fetch(`${API_URL}/users/profile/`, {
+      const data = await fetchJson(`${API_URL}/users/profile/`, {
         method: 'PATCH',
-        headers: {
-          Authorization: `Token ${token}`,
-        },
         body: formData,
       })
-
-      const data = await response.json()
-
-      if (!response.ok) {
-        setMessage({
-          text: data.error || (data.details ? data.details.join(', ') : 'Erro ao atualizar perfil'),
-          type: 'error',
-        })
-        return
-      }
 
       setProfileData(data)
       setAvatarPreview(data.avatar || null)
@@ -166,24 +142,10 @@ const Profile = () => {
       setNewPassword('')
       setConfirmPassword('')
 
-      // Update localStorage user so Header reflects changes instantly
-      const storedUser = localStorage.getItem('user')
-      if (storedUser) {
-        try {
-          const parsed = JSON.parse(storedUser)
-          parsed.nickname = data.nickname
-          parsed.email = data.email
-          parsed.avatar = data.avatar
-          localStorage.setItem('user', JSON.stringify(parsed))
-        } catch {
-          // ignore
-        }
-      }
-
       setMessage({ text: 'Perfil atualizado com sucesso!', type: 'success' })
     } catch (err) {
       setMessage({
-        text: 'Erro de conexão ao salvar alterações.',
+        text: err.data?.details?.join(', ') || err.message || 'Erro de conexão ao salvar alterações.',
         type: 'error',
       })
     } finally {
