@@ -37,6 +37,7 @@ def get_profile_data(user, request=None):
         "avatar": avatar_url,
         "is_online": is_actually_online,
         "last_seen": profile.last_seen.isoformat(),
+        "two_factor_enabled": profile.two_factor_enabled,
     }
 
 

@@ -20,6 +20,13 @@ const Profile = () => {
   const [avatarPreview, setAvatarPreview] = useState(null)
   const [saving, setSaving] = useState(false)
 
+  // 2FA states
+  const [setup2fa, setSetup2fa] = useState(false)
+  const [qrCode, setQrCode] = useState(null)
+  const [totpCode, setTotpCode] = useState("")
+  const [password, setPassword] = useState("")
+  const [disable2fa, setDisable2fa] = useState(false)
+
   const token = localStorage.getItem('token')
   const currentUser = JSON.parse(localStorage.getItem('user') || '{}')
   const isOwnProfile = !userId || String(userId) === String(currentUser.id)
@@ -122,6 +129,65 @@ const Profile = () => {
     }
   }
 
+  async function handleSetup2FA() {
+    try {
+      const res = await fetch(`${API_URL}/auth/2fa/setup/`, {
+        headers: { Authorization: `Token ${token}` },
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error)
+      setQrCode(data.qr_code)
+      setSetup2fa(true)
+    } catch (err) {
+      showMessage(err.message, "error")
+    }
+  }
+
+  async function handleVerify2FA(e) {
+    e.preventDefault()
+    try {
+      const res = await fetch(`${API_URL}/auth/2fa/verify/`, {
+        method: "POST",
+        headers: {
+          Authorization: `Token ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ totp_code: totpCode }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error)
+      showMessage(data.status, "success")
+      setSetup2fa(false)
+      setTotpCode("")
+      fetchProfile()
+    } catch (err) {
+      showMessage(err.message, "error")
+    }
+  }
+
+  async function handleDisable2FA(e) {
+    e.preventDefault()
+    try {
+      const res = await fetch(`${API_URL}/auth/2fa/disable/`, {
+        method: "POST",
+        headers: {
+          Authorization: `Token ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ password, totp_code: totpCode }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error)
+      showMessage(data.status, "success")
+      setDisable2fa(false)
+      setPassword("")
+      setTotpCode("")
+      fetchProfile()
+    } catch (err) {
+      showMessage(err.message, "error")
+    }
+  }
+
   function getInitials(name) {
     return (name || '?').charAt(0).toUpperCase()
   }
@@ -192,12 +258,60 @@ const Profile = () => {
               )}
 
               {isOwnProfile ? (
-                <button
-                  className="btn-primary"
-                  onClick={() => setEditing(true)}
-                >
-                  ✏️ Editar Perfil
-                </button>
+                <>
+                  <button
+                    className="btn-primary"
+                    onClick={() => setEditing(true)}
+                    style={{ marginBottom: "20px" }}
+                  >
+                    ✏️ Editar Perfil
+                  </button>
+
+                  <div className="two-factor-section" style={{ marginTop: "20px", padding: "15px", borderTop: "1px solid #ccc" }}>
+                    <h3>Two-Factor Authentication</h3>
+                    
+                    {profile?.two_factor_enabled ? (
+                      <>
+                        <p style={{ color: "green", fontWeight: "bold" }}>Enabled</p>
+                        {!disable2fa ? (
+                          <button className="btn-secondary" onClick={() => setDisable2fa(true)}>Disable 2FA</button>
+                        ) : (
+                          <form onSubmit={handleDisable2FA} style={{ marginTop: "10px" }}>
+                            <div>
+                              <input type="password" placeholder="Password" value={password} onChange={e => setPassword(e.target.value)} required />
+                            </div>
+                            <div style={{ marginTop: "10px" }}>
+                              <input type="text" placeholder="6-digit code" value={totpCode} onChange={e => setTotpCode(e.target.value)} maxLength={6} required />
+                            </div>
+                            <div style={{ display: "flex", gap: "10px", marginTop: "10px" }}>
+                              <button className="btn-primary" type="submit">Confirm Disable</button>
+                              <button className="btn-secondary" type="button" onClick={() => {setDisable2fa(false); setTotpCode(""); setPassword("")}}>Cancel</button>
+                            </div>
+                          </form>
+                        )}
+                      </>
+                    ) : (
+                      <>
+                        {!setup2fa ? (
+                          <button className="btn-primary" onClick={handleSetup2FA}>Enable 2FA</button>
+                        ) : (
+                          <div style={{ marginTop: "10px" }}>
+                            <p>Scan this QR code with your authenticator.</p>
+                            {qrCode && <img src={qrCode} alt="2FA QR Code" style={{ maxWidth: "200px" }} />}
+                            <form onSubmit={handleVerify2FA} style={{ marginTop: "10px" }}>
+                              <p>Enter the 6-digit code:</p>
+                              <input type="text" value={totpCode} onChange={e => setTotpCode(e.target.value)} maxLength={6} required />
+                              <div style={{ display: "flex", gap: "10px", marginTop: "10px" }}>
+                                <button className="btn-primary" type="submit">Confirm</button>
+                                <button className="btn-secondary" type="button" onClick={() => {setSetup2fa(false); setTotpCode(""); setQrCode(null)}}>Cancel</button>
+                              </div>
+                            </form>
+                          </div>
+                        )}
+                      </>
+                    )}
+                  </div>
+                </>
               ) : (
                 <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', marginTop: '16px' }}>
                   {profile?.friendship_status === 'accepted' ? (

@@ -1,11 +1,15 @@
-from django.contrib import admin;
-from django.urls import path;
+from django.contrib import admin
+from django.urls import path
 
 from .views import (
     validationFoodView,
     RegenerateImageView,
     RegisterView,
     LoginView,
+    Login2FAView,
+    Setup2FAView,
+    Verify2FAView,
+    Disable2FAView,
     GenerationListView,
     GenerationDeleteView,
     LogoutView,
@@ -27,10 +31,13 @@ from .social_views import (
     MarkMessagesReadView,
 )
 
-
 urlpatterns = [
-     path("auth/register/", RegisterView.as_view(), name="register"),
+    path("auth/register/", RegisterView.as_view(), name="register"),
     path("auth/login/", LoginView.as_view(), name="login"),
+    path("auth/login/2fa/", Login2FAView.as_view(), name="login-2fa"),
+    path("auth/2fa/setup/", Setup2FAView.as_view(), name="setup-2fa"),
+    path("auth/2fa/verify/", Verify2FAView.as_view(), name="verify-2fa"),
+    path("auth/2fa/disable/", Disable2FAView.as_view(), name="disable-2fa"),
     path("auth/logout/", LogoutView.as_view(), name="logout"),
     path("ping/", PingView.as_view(), name="ping"),
     path("generate/", validationFoodView.as_view(), name="generate"),

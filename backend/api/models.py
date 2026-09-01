@@ -63,6 +63,14 @@ class UserProfile(models.Model):
     last_seen = models.DateTimeField(
         default=timezone.now,
     )
+    two_factor_enabled = models.BooleanField(
+        default=False,
+    )
+    two_factor_secret = models.CharField(
+        max_length=32,
+        blank=True,
+        null=True,
+    )
 
     def __str__(self):
         return f"Profile: {self.user.username}"

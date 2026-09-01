@@ -1,3 +1,9 @@
+
+import pyotp
+import qrcode
+import base64
+from io import BytesIO
+from django.core import signing
 from uuid import uuid4
 
 from django.contrib.auth import authenticate, get_user_model
@@ -363,6 +369,11 @@ class LoginView(APIView):
                 status=status.HTTP_401_UNAUTHORIZED,
             )
 
+        profile = user.profile
+        if profile.two_factor_enabled:
+            temp_token = signing.dumps({"user_id": user.id})
+            return Response({"require_2fa": True, "temp_token": temp_token}, status=status.HTTP_200_OK)
+
         token, _ = Token.objects.get_or_create(
             user=user
         )
@@ -471,3 +482,115 @@ class PingView(APIView):
         profile.last_seen = timezone.now()
         profile.save(update_fields=['is_online', 'last_seen'])
         return Response({"status": "ok"}, status=status.HTTP_200_OK)
+
+class Login2FAView(APIView):
+    authentication_classes = []
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        temp_token = request.data.get("temp_token")
+        totp_code = request.data.get("totp_code")
+
+        if not temp_token or not totp_code:
+            return Response({"error": "temp_token e totp_code são obrigatórios"}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            data = signing.loads(temp_token, max_age=300)
+            user_id = data.get("user_id")
+        except signing.BadSignature:
+            return Response({"error": "Token expirado ou inválido"}, status=status.HTTP_401_UNAUTHORIZED)
+
+        try:
+            user = User.objects.get(pk=user_id)
+        except User.DoesNotExist:
+            return Response({"error": "Usuário não encontrado"}, status=status.HTTP_404_NOT_FOUND)
+            
+        profile = user.profile
+
+        if not profile.two_factor_enabled or not profile.two_factor_secret:
+            return Response({"error": "2FA não está habilitado para este usuário"}, status=status.HTTP_400_BAD_REQUEST)
+
+        totp = pyotp.TOTP(profile.two_factor_secret)
+        if totp.verify(totp_code):
+            token, _ = Token.objects.get_or_create(user=user)
+            return Response({
+                "token": token.key,
+                "user": {"id": user.id, "username": user.username, "email": user.email},
+            }, status=status.HTTP_200_OK)
+        else:
+            return Response({"error": "Código TOTP inválido"}, status=status.HTTP_401_UNAUTHORIZED)
+
+class Setup2FAView(APIView):
+    authentication_classes = [TokenAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        profile = request.user.profile
+        if profile.two_factor_enabled:
+            return Response({"error": "2FA já está habilitado"}, status=status.HTTP_400_BAD_REQUEST)
+
+        secret = pyotp.random_base32()
+        profile.two_factor_secret = secret
+        profile.save()
+
+        totp = pyotp.TOTP(secret)
+        uri = totp.provisioning_uri(name=request.user.email, issuer_name="Transcendence")
+
+        qr = qrcode.make(uri)
+        buf = BytesIO()
+        qr.save(buf, format="PNG")
+        image_base64 = base64.b64encode(buf.getvalue()).decode("utf-8")
+
+        return Response({
+            "secret": secret,
+            "qr_code": f"data:image/png;base64,{image_base64}"
+        }, status=status.HTTP_200_OK)
+
+class Verify2FAView(APIView):
+    authentication_classes = [TokenAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        profile = request.user.profile
+        if profile.two_factor_enabled:
+            return Response({"error": "2FA já está habilitado"}, status=status.HTTP_400_BAD_REQUEST)
+
+        totp_code = request.data.get("totp_code")
+        if not totp_code or not profile.two_factor_secret:
+            return Response({"error": "Código ausente ou setup não iniciado"}, status=status.HTTP_400_BAD_REQUEST)
+
+        totp = pyotp.TOTP(profile.two_factor_secret)
+        if totp.verify(totp_code):
+            profile.two_factor_enabled = True
+            profile.save()
+            return Response({"status": "2FA habilitado com sucesso"}, status=status.HTTP_200_OK)
+        else:
+            return Response({"error": "Código inválido"}, status=status.HTTP_400_BAD_REQUEST)
+
+class Disable2FAView(APIView):
+    authentication_classes = [TokenAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        password = request.data.get("password")
+        totp_code = request.data.get("totp_code")
+
+        if not password or not totp_code:
+            return Response({"error": "Senha e código são obrigatórios"}, status=status.HTTP_400_BAD_REQUEST)
+
+        user = authenticate(username=request.user.username, password=password)
+        if not user:
+            return Response({"error": "Senha incorreta"}, status=status.HTTP_401_UNAUTHORIZED)
+
+        profile = user.profile
+        if not profile.two_factor_enabled:
+            return Response({"error": "2FA já está desabilitado"}, status=status.HTTP_400_BAD_REQUEST)
+
+        totp = pyotp.TOTP(profile.two_factor_secret)
+        if totp.verify(totp_code):
+            profile.two_factor_enabled = False
+            profile.two_factor_secret = None
+            profile.save()
+            return Response({"status": "2FA desabilitado com sucesso"}, status=status.HTTP_200_OK)
+        else:
+            return Response({"error": "Código inválido"}, status=status.HTTP_401_UNAUTHORIZED)
