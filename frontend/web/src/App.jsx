@@ -11,7 +11,9 @@ import Register from './components/Register'
 import Dashboard from './components/Dashboard.jsx'
 import Privacy from './components/Privacy.jsx'
 import Terms from './components/Terms.jsx'
-
+import Profile from './components/Profile.jsx'
+import Friends from './components/Friends.jsx'
+import Chat from './components/Chat.jsx'
 
 function ProtectedRoute({ children }) {
   const token = localStorage.getItem('token')
@@ -21,17 +23,6 @@ function ProtectedRoute({ children }) {
   }
 
   return children
-}
-
-function GeneratePlaceholder() {
-  return (
-    <main>
-      <h1>Food AI</h1>
-      <h2>Generate</h2>
-
-      <p>Usuário autenticado.</p>
-    </main>
-  )
 }
 
 function App() {
@@ -56,7 +47,6 @@ function App() {
         }
       />
 
-
       <Route
         path="/history"
         element={
@@ -65,7 +55,6 @@ function App() {
           </ProtectedRoute>
         }
       />
-
 
       <Route
         path="/register"
@@ -83,14 +72,12 @@ function App() {
         }
       />
 
-
       <Route
         path="/privacy"
         element={
           <Privacy />
         }
       />
-
 
       <Route
         path="/terms"
@@ -99,6 +86,51 @@ function App() {
         }
       />
 
+      {/* Social Routes */}
+      <Route
+        path="/profile"
+        element={
+          <ProtectedRoute>
+            <Profile />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/profile/:userId"
+        element={
+          <ProtectedRoute>
+            <Profile />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/friends"
+        element={
+          <ProtectedRoute>
+            <Friends />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/chat"
+        element={
+          <ProtectedRoute>
+            <Chat />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/chat/:userId"
+        element={
+          <ProtectedRoute>
+            <Chat />
+          </ProtectedRoute>
+        }
+      />
 
     </Routes>
   )
