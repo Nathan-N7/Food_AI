@@ -1,10 +1,14 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
+import LanguageSelector from './LanguageSelector.jsx'
+import './LanguageSelector.css'
 
 const API_URL = '/api'
 
 const Register = () => {
   const navigate = useNavigate()
+  const { t } = useTranslation()
 
   const [username, setUsername] = useState('')
   const [usernickname, setUserNickname] = useState('')
@@ -17,7 +21,7 @@ const Register = () => {
     event.preventDefault()
 
     setLoading(true)
-    setMessage('Criando conta...')
+    setMessage(t('auth.creating'))
 
     try {
       const response = await fetch(
@@ -39,16 +43,16 @@ const Register = () => {
       const data = await response.json()
 
       if (!response.ok) {
-        setMessage(data.error || 'Erro ao criar conta')
+        setMessage(data.error || t('common.error'))
         return
       }
 
-      setMessage('Conta criada com sucesso')
+      setMessage(t('auth.accountCreated'))
 
       navigate('/login')
     } catch (error) {
       console.error(error)
-      setMessage('Não foi possível conectar ao backend')
+      setMessage(t('auth.connectionError'))
     } finally {
       setLoading(false)
     }
@@ -56,14 +60,15 @@ const Register = () => {
 
   return (
     <main>
+      <LanguageSelector />
       <h1>Food AI</h1>
 
-      <h2>Criar conta</h2>
+      <h2>{t('auth.create')}</h2>
 
       <form onSubmit={handleRegister}>
         <div>
           <label htmlFor="username">
-            Usuário
+            {t('auth.username')}
           </label>
 
           <br />
@@ -81,7 +86,7 @@ const Register = () => {
 
          <div>
           <label htmlFor="username">
-            NickName
+            {t('profile.nickname')}
           </label>
 
           <br />
@@ -99,7 +104,7 @@ const Register = () => {
 
         <div>
           <label htmlFor="email">
-            Email
+            {t('auth.email')}
           </label>
 
           <br />
@@ -116,7 +121,7 @@ const Register = () => {
 
         <div>
           <label htmlFor="password">
-            Senha
+            {t('auth.password')}
           </label>
 
           <br />
@@ -136,7 +141,7 @@ const Register = () => {
           type="submit"
           disabled={loading}
         >
-          {loading ? 'Criando...' : 'Criar conta'}
+          {loading ? t('auth.creating') : t('auth.create')}
         </button>
       </form>
 
@@ -144,7 +149,7 @@ const Register = () => {
         type="button"
         onClick={() => navigate('/login')}
       >
-        Já tenho uma conta
+        {t('auth.login')}
       </button>
 
       
@@ -152,14 +157,14 @@ const Register = () => {
             type="button"
             onClick={() => navigate('/privacy')}
           >
-            Privacy Policy
+            {t('navigation.privacy')}
           </button>
 
           <button
             type="button"
             onClick={() => navigate('/terms')}
           >
-            Terms of Service
+            {t('navigation.terms')}
           </button>
 
 

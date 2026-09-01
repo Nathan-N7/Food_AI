@@ -12,6 +12,9 @@ langgraph==1.2.11
 
 replicate==1.0.7
 requests==2.34.2
+pyotp==2.9.0
+qrcode==8.2
+cryptography==46.0.3
 Pillow==12.3.0
 
 torch==2.13.0+cpu

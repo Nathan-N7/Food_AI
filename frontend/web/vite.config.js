@@ -3,11 +3,22 @@ import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
 
 export default defineConfig({
+  server: {
+    proxy: {
+      '/auth/': 'http://localhost:8000',
+    },
+  },
   plugins: [
     react(),
     VitePWA({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.svg'],
+      workbox: {
+        // OAuth starts with a full-page navigation to the backend. Do not
+        // satisfy it with the cached SPA shell, or React will receive
+        // `/auth/42` and report that the route does not exist.
+        navigateFallbackDenylist: [/^\/auth\//],
+      },
       manifest: {
         name: 'Food AI',
         short_name: 'Food',

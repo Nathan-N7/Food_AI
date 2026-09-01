@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import Header from './Header'
 import './Profile.css'
 
@@ -7,6 +8,7 @@ const API_URL = '/api'
 
 const Profile = () => {
   const navigate = useNavigate()
+  const { t } = useTranslation()
   const fileInputRef = useRef(null)
 
   const [loading, setLoading] = useState(true)
@@ -27,6 +29,10 @@ const Profile = () => {
   const [currentPassword, setCurrentPassword] = useState('')
   const [newPassword, setNewPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
+  const [twoFactorEnabled, setTwoFactorEnabled] = useState(false)
+  const [twoFactorQr, setTwoFactorQr] = useState('')
+  const [twoFactorCode, setTwoFactorCode] = useState('')
+  const [twoFactorPassword, setTwoFactorPassword] = useState('')
 
   useEffect(() => {
     fetchProfile()
@@ -61,6 +67,7 @@ const Profile = () => {
       setEmail(data.email || '')
       setBio(data.bio || '')
       setAvatarPreview(data.avatar || null)
+      setTwoFactorEnabled(Boolean(data.two_factor_enabled))
     } catch (err) {
       setMessage({
         text: 'Não foi possível carregar os dados do perfil.',
@@ -68,6 +75,55 @@ const Profile = () => {
       })
     } finally {
       setLoading(false)
+    }
+  }
+
+  async function twoFactorRequest(path, body = {}) {
+    const response = await fetch(`${API_URL}/auth/2fa/${path}/`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Token ${localStorage.getItem('token')}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(body),
+    })
+    const data = await response.json()
+    if (!response.ok) throw new Error(data.error || 'Erro no 2FA')
+    return data
+  }
+
+  async function startTwoFactor() {
+    try {
+      const data = await twoFactorRequest('setup')
+      setTwoFactorQr(data.qr_code)
+      setTwoFactorCode('')
+      setMessage({ text: t('twoFactor.setupHint'), type: 'success' })
+    } catch (error) {
+      setMessage({ text: error.message, type: 'error' })
+    }
+  }
+
+  async function confirmTwoFactor() {
+    try {
+      await twoFactorRequest('confirm', { code: twoFactorCode })
+      setTwoFactorEnabled(true)
+      setTwoFactorQr('')
+      setTwoFactorCode('')
+      setMessage({ text: t('twoFactor.enabledSuccess'), type: 'success' })
+    } catch (error) {
+      setMessage({ text: error.message, type: 'error' })
+    }
+  }
+
+  async function disableTwoFactor() {
+    try {
+      await twoFactorRequest('disable', { code: twoFactorCode, password: twoFactorPassword })
+      setTwoFactorEnabled(false)
+      setTwoFactorCode('')
+      setTwoFactorPassword('')
+      setMessage({ text: t('twoFactor.disabledSuccess'), type: 'success' })
+    } catch (error) {
+      setMessage({ text: error.message, type: 'error' })
     }
   }
 
@@ -207,7 +263,7 @@ const Profile = () => {
       <>
         <Header />
         <main className="profile-container">
-          <p>Carregando perfil...</p>
+          <p>{t('profile.loading')}</p>
         </main>
       </>
     )
@@ -375,6 +431,36 @@ const Profile = () => {
           </section>
 
           {/* Security / Password Section */}
+          <section className="profile-card">
+            <h3 className="profile-card-title">{t('twoFactor.title')}</h3>
+            {twoFactorEnabled ? (
+              <>
+                <p>{t('twoFactor.enabled')}</p>
+                <div className="profile-form-group">
+                  <label htmlFor="disable-2fa-code">{t('twoFactor.passwordOrCode')}</label>
+                  <input id="disable-2fa-code" className="profile-input" inputMode="numeric" maxLength={6} value={twoFactorCode} onChange={(e) => setTwoFactorCode(e.target.value.replace(/\D/g, '').slice(0, 6))} />
+                </div>
+                <div className="profile-form-group">
+                  <label htmlFor="disable-2fa-password">{t('twoFactor.passwordHint')}</label>
+                  <input id="disable-2fa-password" type="password" className="profile-input" value={twoFactorPassword} onChange={(e) => setTwoFactorPassword(e.target.value)} />
+                </div>
+                <button type="button" className="btn-remove-avatar" onClick={disableTwoFactor}>{t('twoFactor.disable')}</button>
+              </>
+            ) : twoFactorQr ? (
+              <>
+                <p>{t('twoFactor.scan')}</p>
+                <img src={twoFactorQr} alt="QR Code para configurar o 2FA" width="220" height="220" />
+                <div className="profile-form-group">
+                  <label htmlFor="confirm-2fa-code">{t('twoFactor.enterCode')}</label>
+                  <input id="confirm-2fa-code" className="profile-input" inputMode="numeric" maxLength={6} value={twoFactorCode} onChange={(e) => setTwoFactorCode(e.target.value.replace(/\D/g, '').slice(0, 6))} />
+                </div>
+                <button type="button" className="btn-submit" disabled={twoFactorCode.length !== 6} onClick={confirmTwoFactor}>{t('auth.verify')}</button>
+              </>
+            ) : (
+              <button type="button" className="btn-submit" onClick={startTwoFactor}>{t('twoFactor.enable')}</button>
+            )}
+          </section>
+
           <section className="profile-card">
             <div
               style={{

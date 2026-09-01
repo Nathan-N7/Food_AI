@@ -5,6 +5,7 @@ import { registerSW } from 'virtual:pwa-register'
 
 //import './index.css'
 import App from './App.jsx'
+import './i18n'
 
 const updateSW = registerSW({
   onNeedRefresh() {

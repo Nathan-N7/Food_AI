@@ -1,0 +1,38 @@
+{
+  "language": "Language",
+  "languages": { "en": "English", "pt": "Português", "es": "Español" },
+  "navigation": {
+    "dashboard": "Dashboard", "profile": "My Profile", "friends": "Friends & Status",
+    "generate": "Generate Image", "history": "History", "privacy": "Privacy Policy",
+    "terms": "Terms of Service", "logout": "Log out", "openMenu": "Open navigation menu",
+    "closeMenu": "Close navigation menu", "welcome": "Welcome,"
+  },
+  "auth": {
+    "login": "Login", "register": "Create an account", "email": "Email", "username": "Username",
+    "password": "Password", "enter": "Sign in", "signingIn": "Signing in...", "create": "Create account",
+    "creating": "Creating account...", "accountCreated": "Account created successfully",
+    "invalidCredentials": "Invalid credentials", "connectionError": "Could not connect to the backend",
+    "fortyTwo": "Sign in with 42", "oauthDenied": "42 authorization was cancelled",
+    "oauthFailed": "Could not complete 42 login", "twoFactorRequired": "Enter the code from your authenticator.",
+    "twoFactorCode": "6-digit authentication code", "verify": "Verify", "verifying": "Verifying...",
+    "back": "Back", "invalidTwoFactor": "Invalid two-factor code"
+  },
+  "profile": {
+    "title": "My Profile", "personalInfo": "Personal Information", "nickname": "Display name",
+    "bio": "Biography", "usernameIdentifier": "Username (Identifier)", "save": "Save changes",
+    "saving": "Saving...", "updated": "Profile updated successfully!", "loading": "Loading profile...",
+    "nicknamePlaceholder": "How should we call you?", "bioPlaceholder": "Tell us about yourself...",
+    "generations": "Generations", "friends": "Friends", "memberSince": "Member since",
+    "changePassword": "Change password", "currentPassword": "Current password", "newPassword": "New password",
+    "confirmPassword": "Confirm new password", "security": "Security"
+  },
+  "twoFactor": {
+    "title": "Two-Factor Authentication", "enabled": "Enabled", "enable": "Enable 2FA", "disable": "Disable 2FA",
+    "scan": "Scan this QR code with your authenticator.", "enterCode": "Enter the 6-digit code",
+    "setupHint": "Scan the QR Code and enter the current code.", "enabledSuccess": "2FA enabled successfully.",
+    "disabledSuccess": "2FA disabled.", "passwordOrCode": "Authenticator code (or enter your password below)",
+    "passwordHint": "Password"
+  },
+  "dashboard": { "welcome": "Welcome to Food AI", "generate": "Generate food images", "history": "View generation history", "profile": "Manage your profile", "friends": "Connect with friends" },
+  "common": { "error": "An error occurred", "loading": "Loading...", "close": "Close" }
+}

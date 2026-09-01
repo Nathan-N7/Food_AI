@@ -1,0 +1,2 @@
+.language-selector { display: inline-flex; align-items: center; gap: .45rem; color: var(--text, #9ca3af); font-size: .85rem; }
+.language-selector select { border: 1px solid var(--border, #2e303a); border-radius: 6px; background: var(--bg, #16171d); color: inherit; padding: .35rem .45rem; }

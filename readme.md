@@ -70,10 +70,34 @@ POSTGRES_PASSWORD=your_secure_password
 DJANGO_SECRET_KEY=your_secret_key_here
 DJANGO_DEBUG=False
 DJANGO_ALLOWED_HOSTS=localhost,127.0.0.1
+
+# 42 OAuth
+FORTYTWO_CLIENT_ID=your_42_client_id
+FORTYTWO_CLIENT_SECRET=your_42_client_secret
+FORTYTWO_REDIRECT_URI=https://localhost:8443/auth/42/callback
+OAUTH_FRONTEND_URL=https://localhost:8443
 ```
 
 > **Note:** Never commit the `.env` file to version control.
 > The `REPLICATE_API_TOKEN` is required for all AI features to work.
+
+### Login with 42
+
+To enable the **Entrar com 42** button, create an OAuth application at
+`https://profile.intra.42.fr/oauth/applications` and register the exact callback
+URL configured in `FORTYTWO_REDIRECT_URI`. For Docker Compose, use
+`https://localhost:8443/auth/42/callback`. If running Django directly with
+`python manage.py runserver`, configure a callback reachable by that server,
+such as `http://localhost:8000/auth/42/callback`, and set
+`OAUTH_FRONTEND_URL=http://localhost:5173` when Vite serves the frontend.
+
+Set `FORTYTWO_CLIENT_ID`, `FORTYTWO_CLIENT_SECRET`, and
+`FORTYTWO_REDIRECT_URI` only in `backend/.env`; do not add their real values to
+Git. Start the application, open the login page, and select **Entrar com 42**.
+The backend redirects the browser to 42, validates the returned OAuth state,
+gets the 42 profile, and redirects back to the login page with the application's
+existing DRF token. The 42 client secret and 42 access token never reach the
+frontend.
 
 ### Running the Application
 

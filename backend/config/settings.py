@@ -181,3 +181,12 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"
+
+
+FORTYTWO_CLIENT_ID = os.getenv("FORTYTWO_CLIENT_ID", "")
+FORTYTWO_CLIENT_SECRET = os.getenv("FORTYTWO_CLIENT_SECRET", "")
+FORTYTWO_REDIRECT_URI = os.getenv("FORTYTWO_REDIRECT_URI", "")
+OAUTH_FRONTEND_URL = os.getenv(
+    "OAUTH_FRONTEND_URL",
+    "https://localhost:8443",
+)

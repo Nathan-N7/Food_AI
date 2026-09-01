@@ -2,12 +2,16 @@ import { useState, useEffect } from 'react'
 import { useNavigate, useLocation, Link } from 'react-router-dom'
 import './Header.css'
 import Friends from './Friends.jsx'
+import LanguageSelector from './LanguageSelector.jsx'
+import './LanguageSelector.css'
+import { useTranslation } from 'react-i18next'
 
 const Header = ({ user: customUser, avatarUrl = null }) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const [currentUser, setCurrentUser] = useState(customUser || null)
   const navigate = useNavigate()
   const location = useLocation()
+  const { t } = useTranslation()
 
   // Sincroniza com localStorage se não foi passado via prop
   useEffect(() => {
@@ -65,13 +69,13 @@ const Header = ({ user: customUser, avatarUrl = null }) => {
   const effectiveAvatarUrl = avatarUrl || currentUser?.avatar || null
 
   const menuItems = [
-    { label: 'Dashboard', path: '/dashboard', icon: '📊' },
-    { label: 'Meu Perfil', path: '/profile', icon: '👤' },
-    { label: 'Amigos & Status', path: '/friends', icon: '👥' },
-    { label: 'Gerar Imagem', path: '/generate', icon: '✨' },
-    { label: 'Histórico', path: '/history', icon: '📜' },
-    { label: 'Privacidade', path: '/privacy', icon: '🔒' },
-    { label: 'Termos de Serviço', path: '/terms', icon: '📄' },
+    { label: t('navigation.dashboard'), path: '/dashboard', icon: '📊' },
+    { label: t('navigation.profile'), path: '/profile', icon: '👤' },
+    { label: t('navigation.friends'), path: '/friends', icon: '👥' },
+    { label: t('navigation.generate'), path: '/generate', icon: '✨' },
+    { label: t('navigation.history'), path: '/history', icon: '📜' },
+    { label: t('navigation.privacy'), path: '/privacy', icon: '🔒' },
+    { label: t('navigation.terms'), path: '/terms', icon: '📄' },
   
   ]
 
@@ -85,7 +89,7 @@ const Header = ({ user: customUser, avatarUrl = null }) => {
               type="button"
               className={`fai-hamburger-btn ${isMenuOpen ? 'is-active' : ''}`}
               onClick={() => setIsMenuOpen(!isMenuOpen)}
-              aria-label={isMenuOpen ? 'Fechar menu' : 'Abrir menu'}
+              aria-label={isMenuOpen ? t('navigation.closeMenu') : t('navigation.openMenu')}
               aria-expanded={isMenuOpen}
             >
               <span className="fai-hamburger-line"></span>
@@ -103,7 +107,7 @@ const Header = ({ user: customUser, avatarUrl = null }) => {
           {/* Lado Direito: Saudação e Avatar */}
           <div className="fai-header-right">
             <div className="fai-user-greeting">
-              <span className="fai-greeting-label">Bem-vindo(a),</span>
+              <span className="fai-greeting-label">{t('navigation.welcome')}</span>
               <strong className="fai-user-name" title={displayName}>
                 Olá, {displayName}
               </strong>
@@ -137,7 +141,7 @@ const Header = ({ user: customUser, avatarUrl = null }) => {
       {/* Menu Lateral (Drawer Hambúrguer) */}
       <aside
         className={`fai-drawer ${isMenuOpen ? 'is-open' : ''}`}
-        aria-label="Menu principal de navegação"
+                aria-label={t('navigation.openMenu')}
       >
         <div className="fai-drawer-header">
           <div className="fai-brand">
@@ -148,7 +152,7 @@ const Header = ({ user: customUser, avatarUrl = null }) => {
             type="button"
             className="fai-drawer-close"
             onClick={() => setIsMenuOpen(false)}
-            aria-label="Fechar menu"
+            aria-label={t('navigation.closeMenu')}
           >
             ✕
           </button>
@@ -177,10 +181,11 @@ const Header = ({ user: customUser, avatarUrl = null }) => {
             onClick={handleLogout}
           >
             <span className="fai-nav-icon">🚪</span>
-            <span>Sair da conta</span>
+            <span>{t('navigation.logout')}</span>
           </button>
         </div>
       </aside>
+      <div className="fai-language-selector"><LanguageSelector /></div>
     </>
   )
 }

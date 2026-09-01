@@ -1,8 +1,14 @@
+from secrets import compare_digest, token_urlsafe
+from urllib.parse import urlencode
 from uuid import uuid4
+from django.utils import timezone
 
 from django.contrib.auth import authenticate, get_user_model
 from django.contrib.auth.password_validation import validate_password
+from django.conf import settings
 from django.core.exceptions import ValidationError as DjangoValidationError
+from django.db import IntegrityError, transaction
+from django.shortcuts import redirect
 
 from pydantic import ValidationError
 
@@ -18,7 +24,7 @@ from asgiref.sync import async_to_sync
 from channels.layers import get_channel_layer
 
 from .graph import food_graph
-from .models import Friendship, Generation, Profile
+from .models import Friendship, Generation, Profile, TwoFactorChallenge
 from .scheemas import (
     DetectionResult,
     GeminiAnalysis,
@@ -29,10 +35,152 @@ from .services.flux_image_generate import flux_image_generate
 from .services.images_utils import file_to_data_url
 from .services.rtdetr import RtFilter
 from .services.save_image import save_image_from_url
+from .services.forty_two import (
+    AUTHORIZATION_URL,
+    FortyTwoAPIError,
+    exchange_code_for_token,
+    fetch_user,
+)
 from rest_framework.throttling import UserRateThrottle
+from .services.two_factor import (
+    challenge_expiry,
+    decrypt_secret,
+    encrypt_secret,
+    generate_secret,
+    hash_challenge,
+    new_challenge_token,
+    provisioning_uri,
+    qr_data_uri,
+    verify_code,
+)
 
 
 User = get_user_model()
+
+
+def _oauth_frontend_redirect(**params):
+    return redirect(
+        f"{settings.OAUTH_FRONTEND_URL.rstrip('/')}/login"
+        f"#{urlencode(params)}"
+    )
+
+
+def _forty_two_username(login, user_id):
+    username = login[:150]
+    if not User.objects.filter(username=username).exists():
+        return username
+
+    suffix = f"-42-{user_id}"
+    return f"{login[:150 - len(suffix)]}{suffix}"
+
+
+def _create_2fa_challenge(user):
+    raw_token = new_challenge_token()
+    TwoFactorChallenge.objects.create(
+        user=user,
+        token_hash=hash_challenge(raw_token),
+        expires_at=challenge_expiry(),
+    )
+    return raw_token
+
+
+def _two_factor_response(user):
+    return {"two_factor_required": True, "challenge": _create_2fa_challenge(user)}
+
+
+class FortyTwoLoginView(APIView):
+    authentication_classes = []
+    permission_classes = [AllowAny]
+
+    def get(self, request):
+        if not all((
+            settings.FORTYTWO_CLIENT_ID,
+            settings.FORTYTWO_CLIENT_SECRET,
+            settings.FORTYTWO_REDIRECT_URI,
+        )):
+            return _oauth_frontend_redirect(oauth_error="configuration_error")
+
+        state = token_urlsafe(32)
+        request.session["forty_two_oauth_state"] = state
+        request.session.modified = True
+        authorization_params = {
+            'client_id': settings.FORTYTWO_CLIENT_ID,
+            'redirect_uri': settings.FORTYTWO_REDIRECT_URI,
+            'response_type': 'code',
+            'scope': 'public',
+            'state': state,
+        }
+        authorization_url = (
+            f"{AUTHORIZATION_URL}?{urlencode(authorization_params)}"
+        )
+        return redirect(authorization_url)
+
+
+class FortyTwoCallbackView(APIView):
+    authentication_classes = []
+    permission_classes = [AllowAny]
+
+    def get(self, request):
+        expected_state = request.session.pop("forty_two_oauth_state", None)
+        received_state = request.query_params.get("state", "")
+        if not isinstance(expected_state, str) or not compare_digest(
+            expected_state,
+            received_state,
+        ):
+            return _oauth_frontend_redirect(oauth_error="invalid_state")
+
+        if request.query_params.get("error"):
+            return _oauth_frontend_redirect(oauth_error="authorization_denied")
+
+        code = request.query_params.get("code")
+        if not code:
+            return _oauth_frontend_redirect(oauth_error="missing_code")
+
+        try:
+            token_response = exchange_code_for_token(
+                code,
+                settings.FORTYTWO_CLIENT_ID,
+                settings.FORTYTWO_CLIENT_SECRET,
+                settings.FORTYTWO_REDIRECT_URI,
+            )
+            forty_two_user = fetch_user(token_response.access_token)
+            with transaction.atomic():
+                profile = Profile.objects.select_for_update().filter(
+                    forty_two_id=forty_two_user.id,
+                ).select_related("user").first()
+                if profile:
+                    user = profile.user
+                else:
+                    user = User.objects.create_user(
+                        username=_forty_two_username(
+                            forty_two_user.login,
+                            forty_two_user.id,
+                        ),
+                        email=forty_two_user.email,
+                    )
+                    profile = Profile.objects.create(
+                        user=user,
+                        nickname=forty_two_user.login[:50],
+                        forty_two_id=forty_two_user.id,
+                    )
+        except (FortyTwoAPIError, IntegrityError):
+            return _oauth_frontend_redirect(oauth_error="login_failed")
+
+        profile, _ = Profile.objects.get_or_create(user=user)
+        if profile.two_factor_enabled:
+            return _oauth_frontend_redirect(
+                oauth_2fa_required="1",
+                oauth_challenge=_create_2fa_challenge(user),
+            )
+
+        token, _ = Token.objects.get_or_create(user=user)
+        return _oauth_frontend_redirect(
+            oauth_token=token.key,
+            oauth_user_id=user.id,
+            oauth_username=user.username,
+            oauth_email=user.email,
+            oauth_nickname=profile.nickname,
+        )
 
 
 class RegenerateImageView(APIView):
@@ -399,11 +547,15 @@ class LoginView(APIView):
                 status=status.HTTP_401_UNAUTHORIZED,
             )
 
-        token, _ = Token.objects.get_or_create(
-            user=user
-        )
-
         profile, _ = Profile.objects.get_or_create(user=user)
+
+        if profile.two_factor_enabled:
+            return Response(
+                _two_factor_response(user),
+                status=status.HTTP_200_OK,
+            )
+
+        token, _ = Token.objects.get_or_create(user=user)
 
         return Response(
             {
@@ -417,6 +569,105 @@ class LoginView(APIView):
             },
             status=status.HTTP_200_OK,
         )
+
+
+class TwoFactorVerifyLoginView(APIView):
+    authentication_classes = []
+    permission_classes = [AllowAny]
+    throttle_classes = [UserRateThrottle]
+
+    def post(self, request):
+        challenge = request.data.get("challenge")
+        code = str(request.data.get("code") or "").strip()
+        if not isinstance(challenge, str) or not challenge:
+            return Response({"error": "desafio 2FA inválido"}, status=400)
+
+        with transaction.atomic():
+            try:
+                challenge_obj = TwoFactorChallenge.objects.select_for_update().select_related("user").get(
+                    token_hash=hash_challenge(challenge), used_at__isnull=True,
+                )
+            except TwoFactorChallenge.DoesNotExist:
+                return Response({"error": "desafio 2FA inválido ou expirado"}, status=401)
+            if challenge_obj.expires_at <= timezone.now():
+                return Response({"error": "desafio 2FA expirado"}, status=401)
+            profile = Profile.objects.filter(user=challenge_obj.user).first()
+            if not profile or not profile.two_factor_enabled:
+                return Response({"error": "2FA não está habilitado"}, status=400)
+            try:
+                valid = verify_code(decrypt_secret(profile.two_factor_secret), code)
+            except Exception:
+                valid = False
+            if not valid:
+                return Response({"error": "código 2FA inválido"}, status=401)
+            challenge_obj.used_at = timezone.now()
+            challenge_obj.save(update_fields=["used_at"])
+            token, _ = Token.objects.get_or_create(user=challenge_obj.user)
+        return Response({"token": token.key, "user": {
+            "id": challenge_obj.user.id,
+            "username": challenge_obj.user.username,
+            "email": challenge_obj.user.email,
+            "nickname": profile.nickname,
+        }})
+
+
+class TwoFactorSetupView(APIView):
+    authentication_classes = [TokenAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        profile, _ = Profile.objects.get_or_create(user=request.user)
+        secret = generate_secret()
+        profile.two_factor_secret = encrypt_secret(secret)
+        profile.two_factor_enabled = False
+        profile.save(update_fields=["two_factor_secret", "two_factor_enabled"])
+        uri = provisioning_uri(secret, request.user)
+        return Response({"qr_code": qr_data_uri(uri)})
+
+
+class TwoFactorConfirmView(APIView):
+    authentication_classes = [TokenAuthentication]
+    permission_classes = [IsAuthenticated]
+    throttle_classes = [UserRateThrottle]
+
+    def post(self, request):
+        code = str(request.data.get("code") or "").strip()
+        profile = Profile.objects.filter(user=request.user).first()
+        if not profile or not profile.two_factor_secret:
+            return Response({"error": "inicie a configuração do 2FA"}, status=400)
+        try:
+            valid = verify_code(decrypt_secret(profile.two_factor_secret), code)
+        except Exception:
+            valid = False
+        if not valid:
+            return Response({"error": "código 2FA inválido"}, status=400)
+        profile.two_factor_enabled = True
+        profile.save(update_fields=["two_factor_enabled"])
+        return Response({"two_factor_enabled": True})
+
+
+class TwoFactorDisableView(APIView):
+    authentication_classes = [TokenAuthentication]
+    permission_classes = [IsAuthenticated]
+    throttle_classes = [UserRateThrottle]
+
+    def post(self, request):
+        code = str(request.data.get("code") or "").strip()
+        password = request.data.get("password") or ""
+        profile = Profile.objects.filter(user=request.user).first()
+        if not profile or not profile.two_factor_enabled:
+            return Response({"error": "2FA já está desabilitado"}, status=400)
+        password_ok = bool(password) and request.user.check_password(password)
+        try:
+            code_ok = verify_code(decrypt_secret(profile.two_factor_secret), code)
+        except Exception:
+            code_ok = False
+        if not (password_ok or code_ok):
+            return Response({"error": "informe a senha ou um código 2FA válido"}, status=400)
+        profile.two_factor_enabled = False
+        profile.two_factor_secret = ""
+        profile.save(update_fields=["two_factor_enabled", "two_factor_secret"])
+        return Response({"two_factor_enabled": False})
 
 
 class GenerationListView(APIView):
@@ -532,6 +783,7 @@ class ProfileDetailView(APIView):
                 "date_joined": user.date_joined.isoformat(),
                 "generations_count": generations_count,
                 "friends_count": friends_count,
+                "two_factor_enabled": profile.two_factor_enabled,
             },
             status=status.HTTP_200_OK,
         )
@@ -631,6 +883,7 @@ class ProfileDetailView(APIView):
                 "date_joined": user.date_joined.isoformat(),
                 "generations_count": generations_count,
                 "friends_count": friends_count,
+                "two_factor_enabled": profile.two_factor_enabled,
                 "message": "Perfil atualizado com sucesso",
             },
             status=status.HTTP_200_OK,
@@ -1009,4 +1262,3 @@ class FriendDeleteView(APIView):
             {"message": "Amizade desfeita com sucesso"},
             status=status.HTTP_200_OK,
         )
-

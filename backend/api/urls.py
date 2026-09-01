@@ -5,6 +5,10 @@ from .views import (
     RegenerateImageView,
     RegisterView,
     LoginView,
+    TwoFactorVerifyLoginView,
+    TwoFactorSetupView,
+    TwoFactorConfirmView,
+    TwoFactorDisableView,
     GenerationListView,
     GenerationDeleteView,
     ProfileDetailView,
@@ -21,6 +25,10 @@ urlpatterns = [
     # Auth
     path("auth/register/", RegisterView.as_view(), name="register"),
     path("auth/login/", LoginView.as_view(), name="login"),
+    path("auth/2fa/verify/", TwoFactorVerifyLoginView.as_view(), name="two-factor-verify"),
+    path("auth/2fa/setup/", TwoFactorSetupView.as_view(), name="two-factor-setup"),
+    path("auth/2fa/confirm/", TwoFactorConfirmView.as_view(), name="two-factor-confirm"),
+    path("auth/2fa/disable/", TwoFactorDisableView.as_view(), name="two-factor-disable"),
 
     # Profile & Users
     path("users/profile/", ProfileDetailView.as_view(), name="user-profile-detail"),

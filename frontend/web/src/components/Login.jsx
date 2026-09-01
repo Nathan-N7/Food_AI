@@ -1,9 +1,20 @@
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import './Login.css'
+import './LanguageSelector.css'
+import LanguageSelector from './LanguageSelector.jsx'
+import { useTranslation } from 'react-i18next'
 
 const API_URL = '/api'
+
+const oauthErrorMessages = {
+  configuration_error: 'O login com a 42 ainda não foi configurado neste ambiente.',
+  invalid_state: 'A sessão de login expirou. Tente entrar com a 42 novamente.',
+  authorization_denied: 'A autorização de login com a 42 foi cancelada.',
+  missing_code: 'A 42 não retornou o código de autorização. Tente novamente.',
+  login_failed: 'Não foi possível concluir o login com a 42. Tente novamente.',
+}
 
 const Login = () => {
   const [useremail, setUseremail] = useState('')
@@ -12,14 +23,46 @@ const Login = () => {
   const [password, setPassword] = useState('')
   const [message, setMessage] = useState('')
   const [loading, setLoading] = useState(false)
+  const [twoFactorChallenge, setTwoFactorChallenge] = useState('')
+  const [twoFactorCode, setTwoFactorCode] = useState('')
 
   const navigate = useNavigate()
+  const { t } = useTranslation()
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.hash.slice(1))
+    const token = params.get('oauth_token')
+    const oauthError = params.get('oauth_error')
+    const oauthChallenge = params.get('oauth_challenge')
+
+    if (token) {
+      const user = {
+        id: Number(params.get('oauth_user_id')),
+        username: params.get('oauth_username') || '',
+        email: params.get('oauth_email') || '',
+        nickname: params.get('oauth_nickname') || '',
+      }
+      localStorage.setItem('token', token)
+      localStorage.setItem('user', JSON.stringify(user))
+      window.history.replaceState(null, '', '/login')
+      navigate('/dashboard', { replace: true })
+    } else if (oauthChallenge && params.get('oauth_2fa_required')) {
+      setTwoFactorChallenge(oauthChallenge)
+      window.history.replaceState(null, '', '/login')
+    } else if (oauthError) {
+      window.history.replaceState(null, '', '/login')
+      setMessage(
+        oauthErrorMessages[oauthError]
+        || 'Não foi possível entrar com a conta da 42',
+      )
+    }
+  }, [navigate])
 
   async function handleLogin(event) {
     event.preventDefault()
 
     setLoading(true)
-    setMessage('Entrando...')
+    setMessage(t('auth.signingIn'))
 
     try {
       const response = await fetch(
@@ -40,7 +83,14 @@ const Login = () => {
       const data = await response.json()
 
       if (!response.ok) {
-        setMessage(data.error || 'Erro ao fazer login')
+        setMessage(data.error || t('auth.invalidCredentials'))
+        return
+      }
+
+      if (data.two_factor_required) {
+        setTwoFactorChallenge(data.challenge)
+        setTwoFactorCode('')
+        setMessage(t('auth.twoFactorRequired'))
         return
       }
 
@@ -69,22 +119,71 @@ const Login = () => {
     }
   }
 
+  async function handleTwoFactorVerify(event) {
+    event.preventDefault()
+    setLoading(true)
+    setMessage(t('auth.verifying'))
+    try {
+      const response = await fetch(`${API_URL}/auth/2fa/verify/`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ challenge: twoFactorChallenge, code: twoFactorCode }),
+      })
+      const data = await response.json()
+      if (!response.ok) {
+        setMessage(data.error || t('auth.invalidTwoFactor'))
+        return
+      }
+      localStorage.setItem('token', data.token)
+      localStorage.setItem('user', JSON.stringify(data.user))
+      navigate('/dashboard', { replace: true })
+    } catch {
+      setMessage(t('auth.connectionError'))
+    } finally {
+      setLoading(false)
+    }
+  }
+
   return (
     <main className="login-container">
       <section className="login-card">
+        <LanguageSelector />
         <div className="login-header">
           <img src="/cerebro.png" alt="Cérebro AI" className="login-logo-brain" />
           <h1>Food AI</h1>
         </div>
 
-        <h2>Login</h2>
+        <h2>{t('auth.login')}</h2>
 
-        <form onSubmit={handleLogin} className="login-form">  
+        {twoFactorChallenge ? (
+          <form onSubmit={handleTwoFactorVerify} className="login-form">
+            <p>Digite o código de autenticação do seu aplicativo.</p>
+            <div className="input-group">
+              <label htmlFor="two-factor-code">{t('auth.twoFactorCode')}</label>
+              <input
+                id="two-factor-code"
+                inputMode="numeric"
+                pattern="[0-9]{6}"
+                maxLength={6}
+                value={twoFactorCode}
+                onChange={(event) => setTwoFactorCode(event.target.value.replace(/\D/g, '').slice(0, 6))}
+                required
+                autoFocus
+              />
+            </div>
+            <button type="submit" className="btn-submit" disabled={loading || twoFactorCode.length !== 6}>
+              {loading ? t('auth.verifying') : t('auth.verify')}
+            </button>
+            <button type="button" onClick={() => { setTwoFactorChallenge(''); setMessage('') }}>
+              {t('auth.back')}
+            </button>
+          </form>
+        ) : <form onSubmit={handleLogin} className="login-form">
           <div className="form-content-row">
             <div className="input-column">
               <div className="input-group">
                 <label htmlFor="email">
-                  Email
+                    {t('auth.email')}
                 </label>
                 <br />
                 <input
@@ -99,7 +198,7 @@ const Login = () => {
               </div>
               <div className="input-group">
                 <label htmlFor="password">
-                  Senha
+                    {t('auth.password')}
                 </label>
                 <br />
                 <input
@@ -125,9 +224,19 @@ const Login = () => {
             className="btn-submit"
             disabled={loading}
           >
-            {loading ? 'Entrando...' : 'Entrar'}
+            {loading ? t('auth.signingIn') : t('auth.enter')}
           </button>
-        </form>
+
+          <button
+            type="button"
+            className="btn-forty-two"
+            onClick={() => window.location.assign('/auth/42')}
+            aria-label="Entrar com a conta da 42"
+          >
+            <span className="forty-two-mark" aria-hidden="true">42</span>
+            <span>{t('auth.fortyTwo')}</span>
+          </button>
+        </form>}
 
         {message && <p className="login-message">{message}</p>}
 
@@ -136,7 +245,7 @@ const Login = () => {
             type="button"
             onClick={() => navigate('/register')}
           >
-            Create an account
+            {t('auth.register')}
           </button>
 
           <button
@@ -159,4 +268,3 @@ const Login = () => {
 }
 
 export default Login
-

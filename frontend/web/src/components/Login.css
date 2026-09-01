@@ -163,6 +163,41 @@
   cursor: not-allowed;
 }
 
+/* 42's sign-in affordance: high-contrast black button and white wordmark. */
+.btn-forty-two {
+  width: 100%;
+  min-height: 52px;
+  padding: 12px 16px;
+  border: 1px solid #ffffff;
+  border-radius: 12px;
+  background: #000000;
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  font-size: 1rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.2s ease, color 0.2s ease, transform 0.1s ease;
+}
+
+.btn-forty-two:hover {
+  background: #ffffff;
+  color: #000000;
+}
+
+.btn-forty-two:active {
+  transform: scale(0.99);
+}
+
+.forty-two-mark {
+  font-family: Arial Black, Impact, sans-serif;
+  font-size: 1.55rem;
+  line-height: 1;
+  letter-spacing: -0.18rem;
+}
+
 .login-message {
   margin-top: 12px;
   font-size: 0.875rem;

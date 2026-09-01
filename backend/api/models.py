@@ -13,6 +13,13 @@ class Profile(models.Model):
         blank=True,
         default="",
     )
+    forty_two_id = models.BigIntegerField(
+        unique=True,
+        blank=True,
+        null=True,
+    )
+    two_factor_enabled = models.BooleanField(default=False)
+    two_factor_secret = models.CharField(max_length=255, blank=True, default="")
     avatar = models.ImageField(
         upload_to="avatars/",
         blank=True,
@@ -39,6 +46,17 @@ class Profile(models.Model):
                 return request.build_absolute_uri(self.avatar.url)
             return self.avatar.url
         return None
+
+
+class TwoFactorChallenge(models.Model):
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    token_hash = models.CharField(max_length=64, unique=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    expires_at = models.DateTimeField()
+    used_at = models.DateTimeField(blank=True, null=True)
+
+    class Meta:
+        indexes = [models.Index(fields=["token_hash", "used_at"])]
 
 
 class Friendship(models.Model):

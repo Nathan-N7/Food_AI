@@ -17,11 +17,19 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import path, include
 
+from api.views import FortyTwoCallbackView, FortyTwoLoginView
+
 from django.conf import settings
 from django.conf.urls.static import static
 
 urlpatterns = [
     path('admin/', admin.site.urls),
+    path("auth/42", FortyTwoLoginView.as_view(), name="forty-two-login"),
+    path(
+        "auth/42/callback",
+        FortyTwoCallbackView.as_view(),
+        name="forty-two-callback",
+    ),
     path("api/", include("api.urls"))
 ]
 
