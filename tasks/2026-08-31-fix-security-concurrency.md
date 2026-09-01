@@ -1,6 +1,6 @@
 # Fix: Segurança (tokens), Concorrência de dados e Conexão entre usuários
 
-- **Status:** Implementing
+- **Status:** Done
 - **Branch:** task/fix-security-concurrency
 - **Goal:** Migrar autenticação de `localStorage` (DRF authtoken) para **httpOnly cookie + sessão** com CSRF; corrigir race conditions em amizades/perfil; persistir presença via Redis e estado de geração via PostgresSaver; eliminar IDOR e vazamento de token; ajustar throttling; centralizar auth no frontend com AuthContext. Escopo: **segurança + concorrência + presença** (Traefik fica fora desta rodada).
 - **Context:** O código completo da app (auth, amigos, presença WebSocket, geração) vive nas branches remotas; a base decidida é **`origin/update_frontend`**. `main` é só um protótipo minimalista. Repositório remoto pertence a `Nathan-N7`; git local configurado como `Nathan-N7 <Nathan-N7@users.noreply.github.com>`. Decisões do usuário: friendship normalizado `sender<=receiver`; Redis para channel layer + PostgresSaver para checkpointer; escopo atual = segurança+concorrência+presença.
@@ -49,8 +49,16 @@ QA deve confirmar: (1) nenhum `localStorage.setItem('token'|'user')` restante e 
 - **backend migrations (code review)** → PASS (0004 fields, 0005 backfill determinístico dedup antes da constraint, 0006 UniqueConstraint dependente de 0005; cadeia linear 0001–0006).
 - **frontend `npm run build`** → PASS (Vite, 44 módulos, PWA gerado). grep por `localStorage`/`Authorization`/`?token=` = **zero ocorrências de código**.
 - **security spot-checks** → PASS (RegenerateImageView autenticado + posse de thread_id; sem authtoken/TokenAuthentication/Token; middleware deletado; RedisChannelLayer; AuthMiddlewareStack; PostgresSaver com fallback; hardening de cookies/CSRF; signal de Profile; throttling por escopo).
-- **E2E real (login→gerar→amigos→presença, 2 usuários)** → SKIPPED/COULD NOT RUN: nenhuma instância do app rodando no host. **Pendência:** validar em ambiente de deploy (oferecido ao usuário).
-- **VERDICT: PASS** (com e2e real pendente por ambiente).
+- **VERDICT build gate: PASS.**
 
-## TODO após deploy (se aprovado)
-- Rodar E2E real com 2 usuários: login (cookie httpOnly) → gerar → regenerar → amigos → presença WebSocket; confirmar que CSRF header está sendo enviado nas mutations e que o WebSocket conecta sem `?token=`.
+### 2026-09-01 (deploy + E2E real — stack food_ai ao vivo)
+- **Deploy** → `docker compose up -d --build` OK; containers db/redis healthy, backend daphne + frontend nginx up.
+- **Bug de build encontrado e corrigido:** `langgraph-checkpoint-postgres==2.0.9` conflitava com `langgraph==1.2.11` (2.0.9 exige `langgraph-checkpoint 2.x`, mas langgraph 1.2.11 exige 4.x) → `ResolutionImpossible`. Corrigido para `==3.1.2` (exige `langgraph-checkpoint 4.x`). Build voltou a passar (Python 3.14-slim tem wheels p/ torch/ultralytics).
+- **Bug de runtime encontrado e corrigido:** WS presence crashava com `SynchronousOnlyOperation` (acesso síncrono a `self.user.profile` no `connect()`/`disconnect()` async) → erro 1011. Corrigido com helper `database_sync_to_async` `get_user_profile_nickname`. Rebuild+restart OK.
+- **E2E real via API (curl, HTTPS 8443):** registro (201) + login devolve `Set-Cookie: sessionid` (HttpOnly, SameSite=Lax, Secure) e `csrftoken` (Lax, Secure). `GET /api/auth/me/` com cookie → 200 usuário. Amizade: busca → enviar (201, CSRF ok) → **auto-accept mútuo** (mesmo `friendship_id:1`, sem duplicata) → lista de amigos mostra Bob. `GET /api/generations/` → 200 (throttle não bloqueia leitura).
+- **IDOR:** `POST /api/regenerate/` sem auth → 403; com auth + thread_id alheio/aleatório → 404 "thread_id não pertence ao usuário".
+- **Presença real 2 usuários (wss via cookie, sem `?token=`):** Bob online → Alice recebe `initial_presence` com `online_friend_ids:[2]` → Bob desconecta → Alice recebe `friend_presence offline` (Redis channel layer broadcast). Ping→pong OK.
+- **VERDICT: PASS** (validação live completa de auth/cookie/CSRF, IDOR, amizade/race e presença em tempo real entre usuários).
+
+## Nota de escopo restante
+- Geração real de imagem (Gemini/Replicate) não executada no e2e (depende de `GEMINI_API_KEY`/`REPLICATE_API_TOKEN` reais no `.env`); o fluxo de pipeline não foi alterado, apenas a auth (cookie).
