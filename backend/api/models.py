@@ -1,5 +1,13 @@
 from django.conf import settings
 from django.db import models
+from django.utils import timezone
+
+# A user is considered effectively "online" only while their last heartbeat
+# (WebSocket connect/ping) happened within this window. This decouples the
+# displayed status from the unreliable WebSocket disconnect event, so a user
+# automatically appears offline shortly after closing a tab even if the
+# backend never received a clean disconnect for them.
+STALE_AFTER_SECONDS = 60
 
 
 class Profile(models.Model):
@@ -39,6 +47,15 @@ class Profile(models.Model):
                 return request.build_absolute_uri(self.avatar.url)
             return self.avatar.url
         return None
+
+    def is_online_effective(self):
+        """True only if flagged online AND the heartbeat window is fresh."""
+        if not self.is_online:
+            return False
+        if self.last_seen is None:
+            return False
+        cutoff = timezone.now() - timezone.timedelta(seconds=STALE_AFTER_SECONDS)
+        return self.last_seen >= cutoff
 
 
 class Friendship(models.Model):

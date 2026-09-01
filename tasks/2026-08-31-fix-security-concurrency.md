@@ -62,3 +62,20 @@ QA deve confirmar: (1) nenhum `localStorage.setItem('token'|'user')` restante e 
 
 ## Nota de escopo restante
 - Geração real de imagem (Gemini/Replicate) não executada no e2e (depende de `GEMINI_API_KEY`/`REPLICATE_API_TOKEN` reais no `.env`); o fluxo de pipeline não foi alterado, apenas a auth (cookie).
+
+### 2026-09-01 (bug de presença offline encontrado em uso real + correção)
+- **Sintoma relatado:** usuário fecha a página e o amigo continua vendo-o como **online** indefinidamente.
+- **Causas raiz (duas, encadeadas):**
+  1. `disconnect` do WebSocket intermitentemente **falhava com `redis.exceptions.TimeoutError`** (`Timeout reading from redis:6379`, 12+ ocorrências nos logs) durante o `group_send` para os amigos → a exceção estourava o `disconnect` **antes** de entregar o `offline`, deixando o perfil preso em `is_online=True`. Redis em si estava saudável (PING ok); o timeout era transitório no pool do channels-redis sob carga/aquecimento.
+  2. **Nenhuma rede de segurança de staleness:** se o `disconnect` jamais rodasse (aba fechada sem close frame e sem o nginx detectar logo), o usuário ficava online para sempre.
+- **Correções aplicadas:**
+  - `consumers.py`: cada `group_send` de presença agora passa por `_safe_group_send` (try/except) → um timeout do Redis num amigo não mata o `disconnect` nem bloqueia os demais; `disconnect` sempre persiste `is_online=False` no DB primeiro e o `ping` agora atualiza `last_seen` (heartbeat) e **reconcilia amigos stale oportunisticamente**.
+  - **Presença por staleness** (`STALE_AFTER_SECONDS=60` em `models.py`, centralizado e importado pelos consumers): consideramos online só quem tem `last_seen` dentro dos últimos 60s. `get_online_friend_ids` filtra por `last_seen__gte`. Novo `Profile.is_online_effective()` e reconciliação `get_stale_online_friend_ids()` (via `QuerySet.update()`, que ignora `auto_now commit do save`) usados em `connect`/`ping` e nas views.
+  - `views.py`: 7 pontos que retornavam `profile.is_online` cru agora usam `profile.is_online_effective()` (lista de amigos, perfil, busca, UserProfile, requests) → o status REST reflete a janela de staleness mesmo sem disconnect.
+- **Validação (e2e real, wss:// localhost:8443, 2 usuários alice+bob):**
+  - Close limpo (`ws.close()`): bob recebe `friend_presence offline` de alice **imediatamente**.
+  - Close **abrupto** (`ws.terminate()` + destroy TCP, sem close frame): bob recebe `offline` de alice **imediatamente**.
+  - Staleness (bob forçado a `is_online=True` mas `last_seen` ~90s atrás, via `.update()`): `is_online_effective()`=False e `get_online_friend_ids(alice)` retorna `[]`.
+  - Regressão: login (`teste`/`alice`), `GET /me`, `GET /friends/` todos HTTP 200; FriendList mostra `is_online:false` correto após bob sair.
+- **Nota:** `auto_now=True` em `Profile.last_seen` reescreve o timestamp a cada `.save()`; para simular/conciliar staleness usa-se `QuerySet.update()` (não dispara `auto_now`). Impacto aceitável: um save de perfil enquanto `is_online=True` preso re-anima `last_seen` por até 60s, mas o `disconnect`/staleness normal cobre o caso real.
+- **VERDICT de presença: corrigido** (tempo real + fallback de 60s).
