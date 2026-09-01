@@ -40,7 +40,16 @@ const Dashboard = () => {
     }
   }
 
-  function handleLogout() {
+  async function handleLogout() {
+    const token = localStorage.getItem('token');
+    if (token) {
+      try {
+        await fetch('/api/auth/logout/', {
+          method: 'POST',
+          headers: { 'Authorization': `Token ${token}` }
+        });
+      } catch (e) { console.error(e); }
+    }
     localStorage.removeItem('token')
     localStorage.removeItem('user')
     navigate('/login')

@@ -446,3 +446,28 @@ class GenerationDeleteView(APIView):
         generation.delete()
 
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+from django.utils import timezone
+
+class LogoutView(APIView):
+    authentication_classes = [TokenAuthentication]
+    permission_classes = [IsAuthenticated]
+    
+    def post(self, request):
+        if hasattr(request.user, 'auth_token'):
+            request.user.auth_token.delete()
+        profile = request.user.profile
+        profile.is_online = False
+        profile.save(update_fields=['is_online'])
+        return Response({"status": "logged out"}, status=status.HTTP_200_OK)
+
+class PingView(APIView):
+    authentication_classes = [TokenAuthentication]
+    permission_classes = [IsAuthenticated]
+    
+    def post(self, request):
+        profile = request.user.profile
+        profile.is_online = True
+        profile.last_seen = timezone.now()
+        profile.save(update_fields=['is_online', 'last_seen'])
+        return Response({"status": "ok"}, status=status.HTTP_200_OK)

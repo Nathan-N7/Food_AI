@@ -7,7 +7,9 @@ from .views import (
     RegisterView,
     LoginView,
     GenerationListView,
-    GenerationDeleteView
+    GenerationDeleteView,
+    LogoutView,
+    PingView
 )
 
 from .social_views import (
@@ -29,6 +31,8 @@ from .social_views import (
 urlpatterns = [
      path("auth/register/", RegisterView.as_view(), name="register"),
     path("auth/login/", LoginView.as_view(), name="login"),
+    path("auth/logout/", LogoutView.as_view(), name="logout"),
+    path("ping/", PingView.as_view(), name="ping"),
     path("generate/", validationFoodView.as_view(), name="generate"),
     path("regenerate/", RegenerateImageView.as_view(), name="regenerate"),
     path("generations/", GenerationListView.as_view(), name="generations-list"),

@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import {
@@ -28,6 +29,28 @@ function ProtectedRoute({ children }) {
 }
 
 function App() {
+  useEffect(() => {
+    const pingServer = async () => {
+      const token = localStorage.getItem('token');
+      if (token) {
+        try {
+          await fetch('/api/ping/', {
+            method: 'POST',
+            headers: {
+              'Authorization': `Token ${token}`
+            }
+          });
+        } catch (error) {
+          console.error('Ping failed:', error);
+        }
+      }
+    };
+
+    pingServer(); // Initial ping
+    const interval = setInterval(pingServer, 60000); // Ping every 60 seconds
+    return () => clearInterval(interval);
+  }, []);
+
   return (
     <>
       <ToastContainer position="top-right" autoClose={3000} />

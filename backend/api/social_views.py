@@ -1,3 +1,5 @@
+from django.utils import timezone
+from datetime import timedelta
 from django.contrib.auth import get_user_model
 from django.db.models import Q
 from django.utils import timezone
@@ -25,6 +27,7 @@ def get_profile_data(user, request=None):
             profile.avatar.url
         )
 
+    is_actually_online = profile.is_online and (timezone.now() - profile.last_seen < timedelta(minutes=2))
     return {
         "id": user.id,
         "username": user.username,
@@ -32,7 +35,7 @@ def get_profile_data(user, request=None):
         "display_name": profile.display_name or user.username,
         "bio": profile.bio,
         "avatar": avatar_url,
-        "is_online": profile.is_online,
+        "is_online": is_actually_online,
         "last_seen": profile.last_seen.isoformat(),
     }
 
