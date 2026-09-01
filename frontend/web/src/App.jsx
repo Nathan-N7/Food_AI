@@ -8,6 +8,7 @@ import Login from './components/Login.jsx'
 import Generate from './components/Generate.jsx'
 import History from './components/History'
 import Register from './components/Register'
+import OAuthSuccess from './components/OAuthSuccess.jsx'
 import Dashboard from './components/Dashboard.jsx'
 import Profile from './components/Profile.jsx'
 import UserProfile from './components/UserProfile.jsx'
@@ -48,6 +49,11 @@ function App() {
       <Route
         path="/register"
         element={<Register />}
+      />
+
+      <Route
+        path="/oauth/success"
+        element={<OAuthSuccess />}
       />
 
       <Route

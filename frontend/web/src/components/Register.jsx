@@ -1,11 +1,15 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
+import './Login.css'
 import { fetchJson } from '../lib/api.js'
+import LanguageSwitcher from './LanguageSwitcher.jsx'
 
 const API_URL = '/api'
 
 const Register = () => {
   const navigate = useNavigate()
+  const { t } = useTranslation()
 
   const [username, setUsername] = useState('')
   const [usernickname, setUserNickname] = useState('')
@@ -18,7 +22,7 @@ const Register = () => {
     event.preventDefault()
 
     setLoading(true)
-    setMessage('Criando conta...')
+    setMessage(t('register.registering'))
 
     try {
       await fetchJson(`${API_URL}/auth/register/`, {
@@ -31,127 +35,130 @@ const Register = () => {
         },
       })
 
-      setMessage('Conta criada com sucesso')
+      setMessage(t('register.accountCreated'))
 
       navigate('/login')
     } catch (error) {
-      setMessage(error.message || 'Erro ao criar conta')
+      setMessage(error.message || t('register.registerError'))
     } finally {
       setLoading(false)
     }
   }
 
   return (
-    <main>
-      <h1>Food AI</h1>
-
-      <h2>Criar conta</h2>
-
-      <form onSubmit={handleRegister}>
-        <div>
-          <label htmlFor="username">
-            Usuário
-          </label>
-
-          <br />
-
-          <input
-            id="username"
-            type="text"
-            value={username}
-            onChange={(event) =>
-              setUsername(event.target.value)
-            }
-            required
-          />
+    <main className="login-container">
+      <section className="login-card">
+        <LanguageSwitcher />
+        <div className="login-header">
+          <img src="/cerebro.png" alt={t('register.brainAlt')} className="login-logo-brain" />
+          <h1>Food AI</h1>
         </div>
 
-         <div>
-          <label htmlFor="username">
-            NickName
-          </label>
+        <h2>{t('register.title')}</h2>
 
-          <br />
+        <form onSubmit={handleRegister} className="login-form">
+          <div className="input-group">
+            <label htmlFor="username">
+              {t('register.username')}
+            </label>
+            <br />
+            <input
+              id="username"
+              type="text"
+              value={username}
+              onChange={(event) =>
+                setUsername(event.target.value)
+              }
+              required
+            />
+          </div>
 
-          <input
-            id="usernickname"
-            type="text"
-            value={usernickname}
-            onChange={(event) =>
-              setUserNickname(event.target.value)
-            }
-            required
-          />
-        </div>
+          <div className="input-group">
+            <label htmlFor="usernickname">
+              {t('register.nickname')}
+            </label>
+            <br />
+            <input
+              id="usernickname"
+              type="text"
+              value={usernickname}
+              onChange={(event) =>
+                setUserNickname(event.target.value)
+              }
+              required
+            />
+          </div>
 
-        <div>
-          <label htmlFor="email">
-            Email
-          </label>
+          <div className="input-group">
+            <label htmlFor="email">
+              {t('register.email')}
+            </label>
+            <br />
+            <input
+              id="email"
+              type="email"
+              value={email}
+              onChange={(event) =>
+                setEmail(event.target.value)
+              }
+              required
+            />
+          </div>
 
-          <br />
+          <div className="input-group">
+            <label htmlFor="password">
+              {t('register.password')}
+            </label>
+            <br />
+            <input
+              id="password"
+              type="password"
+              value={password}
+              onChange={(event) =>
+                setPassword(event.target.value)
+              }
+              required
+            />
+          </div>
 
-          <input
-            id="email"
-            type="email"
-            value={email}
-            onChange={(event) =>
-              setEmail(event.target.value)
-            }
-          />
-        </div>
+          <button
+            type="submit"
+            className="btn-submit"
+            disabled={loading}
+          >
+            {loading ? t('register.submitting') : t('register.submit')}
+          </button>
 
-        <div>
-          <label htmlFor="password">
-            Senha
-          </label>
+          <a href="/api/auth/42/authorize" className="btn-42">
+            {t('register.register42')}
+          </a>
+        </form>
 
-          <br />
+        {message && <p className="login-message">{message}</p>}
 
-          <input
-            id="password"
-            type="password"
-            value={password}
-            onChange={(event) =>
-              setPassword(event.target.value)
-            }
-            required
-          />
-        </div>
+        <div className="login-footer">
+          <button
+            type="button"
+            onClick={() => navigate('/login')}
+          >
+            {t('register.alreadyHaveAccount')}
+          </button>
 
-        <button
-          type="submit"
-          disabled={loading}
-        >
-          {loading ? 'Criando...' : 'Criar conta'}
-        </button>
-      </form>
-
-      <button
-        type="button"
-        onClick={() => navigate('/login')}
-      >
-        Já tenho uma conta
-      </button>
-
-      
-       <button
+          <button
             type="button"
             onClick={() => navigate('/privacy')}
           >
-            Privacy Policy
+            {t('register.privacy')}
           </button>
 
           <button
             type="button"
             onClick={() => navigate('/terms')}
           >
-            Terms of Service
+            {t('register.terms')}
           </button>
-
-
-
-      {message && <p>{message}</p>}
+        </div>
+      </section>
     </main>
   )
 }

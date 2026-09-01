@@ -1,10 +1,13 @@
 
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import './Login.css'
 import { useAuth } from '../context/AuthContext.jsx'
+import LanguageSwitcher from './LanguageSwitcher.jsx'
 
 const Login = () => {
+  const { t } = useTranslation()
   const [useremail, setUseremail] = useState('')
   const [usernickname, setUsernickname] = useState('')
   const [username, setUsername] = useState('')
@@ -19,7 +22,7 @@ const Login = () => {
     event.preventDefault()
 
     setLoading(true)
-    setMessage('Entrando...')
+    setMessage(t('login.submitting'))
 
     try {
       const user = await login({
@@ -30,12 +33,12 @@ const Login = () => {
       setPassword('')
 
       setMessage(
-        `Login realizado: ${user?.nickname || user?.username}`,
+        t('login.loginSuccess', { name: user?.nickname || user?.username }),
       )
 
       navigate('/dashboard')
     } catch (error) {
-      setMessage(error.message || 'Erro ao fazer login')
+      setMessage(error.message || t('login.loginError'))
     } finally {
       setLoading(false)
     }
@@ -44,19 +47,20 @@ const Login = () => {
   return (
     <main className="login-container">
       <section className="login-card">
+        <LanguageSwitcher />
         <div className="login-header">
-          <img src="/cerebro.png" alt="Cérebro AI" className="login-logo-brain" />
+          <img src="/cerebro.png" alt={t('login.brainAlt')} className="login-logo-brain" />
           <h1>Food AI</h1>
         </div>
 
-        <h2>Login</h2>
+        <h2>{t('login.title')}</h2>
 
         <form onSubmit={handleLogin} className="login-form">  
           <div className="form-content-row">
             <div className="input-column">
               <div className="input-group">
                 <label htmlFor="email">
-                  Email
+                  {t('login.email')}
                 </label>
                 <br />
                 <input
@@ -71,7 +75,7 @@ const Login = () => {
               </div>
               <div className="input-group">
                 <label htmlFor="password">
-                  Senha
+                  {t('login.password')}
                 </label>
                 <br />
                 <input
@@ -87,7 +91,7 @@ const Login = () => {
             </div>
             
             <div className="hat-badge-container">
-              <img src="/chapeu.png" alt="Chapéu Chef" className="login-logo" />
+              <img src="/chapeu.png" alt={t('login.hatAlt')} className="login-logo" />
             </div>
           </div>
 
@@ -97,8 +101,12 @@ const Login = () => {
             className="btn-submit"
             disabled={loading}
           >
-            {loading ? 'Entrando...' : 'Entrar'}
+            {loading ? t('login.submitting') : t('login.submit')}
           </button>
+
+          <a href="/api/auth/42/authorize" className="btn-42">
+            {t('login.login42')}
+          </a>
         </form>
 
         {message && <p className="login-message">{message}</p>}
@@ -108,21 +116,21 @@ const Login = () => {
             type="button"
             onClick={() => navigate('/register')}
           >
-            Create an account
+            {t('login.createAccount')}
           </button>
 
           <button
             type="button"
             onClick={() => navigate('/privacy')}
           >
-            Privacy Policy
+            {t('login.privacy')}
           </button>
 
           <button
             type="button"
             onClick={() => navigate('/terms')}
           >
-            Terms of Service
+            {t('login.terms')}
           </button>
         </div>
       </section>

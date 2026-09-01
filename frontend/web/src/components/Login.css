@@ -8,6 +8,7 @@
 }
 
 .login-container {
+  position: relative;
   min-height: 100vh;
   width: 100vw;
   display: flex;
@@ -163,6 +164,48 @@
   cursor: not-allowed;
 }
 
+.btn-42 {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  padding: 14px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  background: rgba(15, 23, 42, 0.9);
+  color: #f8fafc;
+  font-size: 1rem;
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background 0.2s ease, border-color 0.2s ease, transform 0.1s ease;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
+}
+
+.btn-42::before {
+  content: "42";
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 10px;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: #f8fafc;
+  color: #0f172a;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.btn-42:hover {
+  background: #1e293b;
+  border-color: rgba(255, 255, 255, 0.4);
+}
+
+.btn-42:active {
+  transform: scale(0.99);
+}
+
 .login-message {
   margin-top: 12px;
   font-size: 0.875rem;
@@ -193,6 +236,31 @@
 .login-footer button:hover {
   color: #ffffff;
   text-decoration: underline;
+}
+
+/* Language Switcher on public auth screens */
+.login-container .language-switcher {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  background: rgba(15, 23, 42, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 10px;
+  padding: 4px;
+}
+
+.login-container .language-switcher-btn {
+  color: #94a3b8;
+}
+
+.login-container .language-switcher-btn:hover {
+  color: #ffffff;
+}
+
+.login-container .language-switcher-btn.is-active {
+  background: rgba(52, 211, 153, 0.2);
+  color: #34d399;
+  border: 1px solid rgba(52, 211, 153, 0.5);
 }
 
 /* Responsividade */
