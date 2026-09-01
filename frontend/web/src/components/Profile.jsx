@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
+import { useTranslation } from 'react-i18next'
 import Header from './Header'
 import { fetchJson } from '../lib/api.js'
 import './Profile.css'
@@ -7,6 +8,7 @@ const API_URL = '/api'
 
 const Profile = () => {
   const fileInputRef = useRef(null)
+  const { t } = useTranslation()
 
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -39,13 +41,13 @@ const Profile = () => {
       setAvatarPreview(data.avatar || null)
     } catch {
       setMessage({
-        text: 'Não foi possível carregar os dados do perfil.',
+        text: t('profile.loadError'),
         type: 'error',
       })
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [t])
 
   useEffect(() => {
     fetchProfile()
@@ -66,7 +68,7 @@ const Profile = () => {
 
     if (!file.type.startsWith('image/')) {
       setMessage({
-        text: 'Por favor, selecione um arquivo de imagem válido.',
+        text: t('profile.invalidImage'),
         type: 'error',
       })
       return
@@ -74,7 +76,7 @@ const Profile = () => {
 
     if (file.size > 5 * 1024 * 1024) {
       setMessage({
-        text: 'A imagem deve ter no máximo 5 MB.',
+        text: t('profile.imageTooLarge'),
         type: 'error',
       })
       return
@@ -104,7 +106,7 @@ const Profile = () => {
 
     if (newPassword && newPassword !== confirmPassword) {
       setMessage({
-        text: 'A nova senha e a confirmação não coincidem.',
+        text: t('profile.passwordMismatch'),
         type: 'error',
       })
       return
@@ -142,10 +144,10 @@ const Profile = () => {
       setNewPassword('')
       setConfirmPassword('')
 
-      setMessage({ text: 'Perfil atualizado com sucesso!', type: 'success' })
+      setMessage({ text: t('profile.updated'), type: 'success' })
     } catch (err) {
       setMessage({
-        text: err.data?.details?.join(', ') || err.message || 'Erro de conexão ao salvar alterações.',
+        text: err.data?.details?.join(', ') || err.message || t('profile.saveError'),
         type: 'error',
       })
     } finally {
@@ -162,14 +164,14 @@ const Profile = () => {
     return name.slice(0, 2).toUpperCase()
   }
 
-  const displayName = nickname || profileData?.username || 'Usuário'
+  const displayName = nickname || profileData?.username || t('profile.user')
 
   if (loading) {
     return (
       <>
         <Header />
         <main className="profile-container">
-          <p>Carregando perfil...</p>
+          <p>{t('profile.loading')}</p>
         </main>
       </>
     )
@@ -197,7 +199,7 @@ const Profile = () => {
           <div className="profile-avatar-wrapper">
             <div className="profile-avatar-img">
               {avatarPreview ? (
-                <img src={avatarPreview} alt={`Avatar de ${displayName}`} />
+                <img src={avatarPreview} alt={t('profile.avatarOf', { name: displayName })} />
               ) : (
                 <span>{getInitials(displayName)}</span>
               )}
@@ -206,7 +208,7 @@ const Profile = () => {
             <button
               type="button"
               className="profile-avatar-upload-btn"
-              title="Trocar avatar"
+              title={t('profile.changeAvatar')}
               onClick={() => fileInputRef.current?.click()}
             >
               📷
@@ -227,7 +229,7 @@ const Profile = () => {
               <p className="profile-bio-text">{profileData.bio}</p>
             ) : (
               <p className="profile-bio-text" style={{ fontStyle: 'italic', opacity: 0.7 }}>
-                Nenhuma bio adicionada ainda.
+                {t('profile.noBio')}
               </p>
             )}
 
@@ -238,7 +240,7 @@ const Profile = () => {
                   className="btn-remove-avatar"
                   onClick={handleRemoveAvatar}
                 >
-                  Restaurar avatar padrão
+                  {t('profile.restoreAvatar')}
                 </button>
               </div>
             )}
@@ -253,7 +255,7 @@ const Profile = () => {
               <span className="profile-stat-value">
                 {profileData?.generations_count || 0}
               </span>
-              <span className="profile-stat-label">Gerações Feitas</span>
+              <span className="profile-stat-label">{t('profile.statsGenerations')}</span>
             </div>
           </div>
 
@@ -263,7 +265,7 @@ const Profile = () => {
               <span className="profile-stat-value">
                 {profileData?.friends_count || 0}
               </span>
-              <span className="profile-stat-label">Amigos</span>
+              <span className="profile-stat-label">{t('profile.statsFriends')}</span>
             </div>
           </div>
 
@@ -275,7 +277,7 @@ const Profile = () => {
                   ? new Date(profileData.date_joined).toLocaleDateString('pt-BR')
                   : '—'}
               </span>
-              <span className="profile-stat-label">Membro Desde</span>
+              <span className="profile-stat-label">{t('profile.statsSince')}</span>
             </div>
           </div>
         </section>
@@ -283,10 +285,10 @@ const Profile = () => {
         {/* Edit Form */}
         <form onSubmit={handleSubmit}>
           <section className="profile-card">
-            <h3 className="profile-card-title">Informações Pessoais</h3>
+            <h3 className="profile-card-title">{t('profile.personalInfo')}</h3>
 
             <div className="profile-form-group">
-              <label htmlFor="username">Nome de Usuário (Identificador)</label>
+              <label htmlFor="username">{t('profile.usernameLabel')}</label>
               <input
                 id="username"
                 type="text"
@@ -297,12 +299,12 @@ const Profile = () => {
             </div>
 
             <div className="profile-form-group">
-              <label htmlFor="nickname">Apelido (Nome de Exibição)</label>
+              <label htmlFor="nickname">{t('profile.nicknameLabel')}</label>
               <input
                 id="nickname"
                 type="text"
                 className="profile-input"
-                placeholder="Como quer ser chamado?"
+                placeholder={t('profile.nicknamePlaceholder')}
                 value={nickname}
                 onChange={(e) => setNickname(e.target.value)}
                 maxLength={50}
@@ -310,7 +312,7 @@ const Profile = () => {
             </div>
 
             <div className="profile-form-group">
-              <label htmlFor="email">Email</label>
+              <label htmlFor="email">{t('profile.emailLabel')}</label>
               <input
                 id="email"
                 type="email"
@@ -323,12 +325,12 @@ const Profile = () => {
 
             <div className="profile-form-group">
               <label htmlFor="bio">
-                Biografia <small>({bio.length}/300 caracteres)</small>
+                {t('profile.bioLabel')} <small>({t('profile.bioChars', { count: bio.length })})</small>
               </label>
               <textarea
                 id="bio"
                 className="profile-textarea"
-                placeholder="Conte um pouco sobre você e seus pratos favoritos..."
+                placeholder={t('profile.bioPlaceholder')}
                 value={bio}
                 onChange={(e) => setBio(e.target.value)}
                 maxLength={300}
@@ -348,45 +350,45 @@ const Profile = () => {
               onClick={() => setShowPasswordSection(!showPasswordSection)}
             >
               <h3 className="profile-card-title" style={{ margin: 0, border: 'none' }}>
-                Alterar Senha {showPasswordSection ? '▲' : '▼'}
+                {t('profile.changePassword', { arrow: showPasswordSection ? t('profile.arrow_up') : t('profile.arrow_down') })}
               </h3>
             </div>
 
             {showPasswordSection && (
               <div style={{ marginTop: '1.25rem' }}>
                 <div className="profile-form-group">
-                  <label htmlFor="currentPassword">Senha Atual</label>
+                  <label htmlFor="currentPassword">{t('profile.currentPassword')}</label>
                   <input
                     id="currentPassword"
                     type="password"
                     className="profile-input"
                     value={currentPassword}
                     onChange={(e) => setCurrentPassword(e.target.value)}
-                    placeholder="Digite sua senha atual"
+                    placeholder={t('profile.currentPasswordPlaceholder')}
                   />
                 </div>
 
                 <div className="profile-form-group">
-                  <label htmlFor="newPassword">Nova Senha</label>
+                  <label htmlFor="newPassword">{t('profile.newPassword')}</label>
                   <input
                     id="newPassword"
                     type="password"
                     className="profile-input"
                     value={newPassword}
                     onChange={(e) => setNewPassword(e.target.value)}
-                    placeholder="Mínimo 8 caracteres"
+                    placeholder={t('profile.newPasswordPlaceholder')}
                   />
                 </div>
 
                 <div className="profile-form-group">
-                  <label htmlFor="confirmPassword">Confirmar Nova Senha</label>
+                  <label htmlFor="confirmPassword">{t('profile.confirmPassword')}</label>
                   <input
                     id="confirmPassword"
                     type="password"
                     className="profile-input"
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
-                    placeholder="Repita a nova senha"
+                    placeholder={t('profile.confirmPasswordPlaceholder')}
                   />
                 </div>
               </div>
@@ -398,7 +400,7 @@ const Profile = () => {
             className="profile-submit-btn"
             disabled={saving}
           >
-            {saving ? 'Salvando alterações...' : '💾 Salvar Alterações'}
+            {saving ? t('profile.saving') : t('profile.save')}
           </button>
         </form>
       </main>

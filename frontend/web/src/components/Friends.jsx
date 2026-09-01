@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Link } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import Header from './Header'
 import { usePresence } from '../hooks/usePresence'
 import { fetchJson } from '../lib/api.js'
@@ -8,6 +9,7 @@ import './Friends.css'
 const API_URL = '/api'
 
 const Friends = () => {
+  const { t } = useTranslation()
   const { isConnected, isFriendOnline, notifications } = usePresence()
 
   const [activeTab, setActiveTab] = useState('friends') // 'friends' | 'search' | 'requests'
@@ -26,12 +28,12 @@ const Friends = () => {
       setFriends(data)
     } catch (err) {
       if (err.status !== 401) {
-        console.error('Erro ao buscar amigos:', err)
+        console.error(t('friends.friendLoadError'), err)
       }
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [t])
 
   const fetchRequests = useCallback(async () => {
     try {
@@ -39,10 +41,10 @@ const Friends = () => {
       setRequests(data)
     } catch (err) {
       if (err.status !== 401) {
-        console.error('Erro ao buscar solicitações:', err)
+        console.error(t('friends.requestLoadError'), err)
       }
     }
-  }, [])
+  }, [t])
 
   useEffect(() => {
     fetchFriends()
@@ -73,7 +75,7 @@ const Friends = () => {
         setSearchResults(data)
       } catch (err) {
         if (err.status !== 401) {
-          console.error('Erro na busca:', err)
+          console.error(t('friends.searchError'), err)
         }
       } finally {
         setSearchLoading(false)
@@ -81,7 +83,7 @@ const Friends = () => {
     }, 300)
 
     return () => clearTimeout(timer)
-  }, [searchQuery])
+  }, [searchQuery, t])
 
   async function handleSendRequest(userId) {
     setActionLoading((prev) => ({ ...prev, [userId]: true }))
@@ -105,7 +107,7 @@ const Friends = () => {
       fetchRequests()
       if (data.status === 'accepted') fetchFriends()
     } catch (err) {
-      alert(err.message || 'Erro ao enviar solicitação')
+      alert(err.message || t('friends.requestError'))
     } finally {
       setActionLoading((prev) => ({ ...prev, [userId]: false }))
     }
@@ -128,14 +130,14 @@ const Friends = () => {
         fetchFriends()
       }
     } catch {
-      alert('Erro ao responder solicitação')
+      alert(t('friends.respondError'))
     } finally {
       setActionLoading((prev) => ({ ...prev, [requestId]: false }))
     }
   }
 
   async function handleRemoveFriend(friendId, friendName) {
-    if (!confirm(`Deseja remover ${friendName} dos seus amigos?`)) return
+    if (!confirm(t('friends.confirmRemove', { name: friendName }))) return
 
     try {
       await fetchJson(`${API_URL}/friends/${friendId}/`, {
@@ -143,7 +145,7 @@ const Friends = () => {
       })
       setFriends((prev) => prev.filter((f) => f.id !== friendId))
     } catch {
-      alert('Erro ao remover amigo')
+      alert(t('friends.removeError'))
     }
   }
 
@@ -164,10 +166,10 @@ const Friends = () => {
       <main className="friends-container">
         {/* Top Header */}
         <div className="friends-header">
-          <h2>Amigos & Conexões</h2>
+          <h2>{t('friends.title')}</h2>
           <div className="friends-live-badge">
             <span className="live-dot" style={{ backgroundColor: isConnected ? '#10b981' : '#f59e0b' }} />
-            <span>{isConnected ? 'Tempo Real Ativo' : 'Conectando...'}</span>
+            <span>{isConnected ? t('friends.realtime') : t('friends.connecting')}</span>
           </div>
         </div>
 
@@ -178,7 +180,7 @@ const Friends = () => {
             className={`friends-tab-btn ${activeTab === 'friends' ? 'is-active' : ''}`}
             onClick={() => setActiveTab('friends')}
           >
-            <span>👥 Meus Amigos</span>
+            <span>{t('friends.myFriends')}</span>
             <span className="friends-tab-count">{friends.length}</span>
           </button>
 
@@ -187,7 +189,7 @@ const Friends = () => {
             className={`friends-tab-btn ${activeTab === 'search' ? 'is-active' : ''}`}
             onClick={() => setActiveTab('search')}
           >
-            <span>🔍 Buscar Usuários</span>
+            <span>{t('friends.searchUsers')}</span>
           </button>
 
           <button
@@ -195,7 +197,7 @@ const Friends = () => {
             className={`friends-tab-btn ${activeTab === 'requests' ? 'is-active' : ''}`}
             onClick={() => setActiveTab('requests')}
           >
-            <span>📬 Solicitações</span>
+            <span>{t('friends.requests')}</span>
             {pendingReceivedCount > 0 && (
               <span className="friends-tab-count" style={{ background: '#ef4444', color: '#fff' }}>
                 {pendingReceivedCount}
@@ -208,12 +210,12 @@ const Friends = () => {
         {activeTab === 'friends' && (
           <div>
             {loading ? (
-              <p>Carregando amigos...</p>
+              <p>{t('friends.loading')}</p>
             ) : friends.length === 0 ? (
               <div className="friends-empty-state">
                 <div className="friends-empty-state-icon">👥</div>
-                <h3>Nenhum amigo adicionado ainda</h3>
-                <p>Use a aba "Buscar Usuários" para encontrar e adicionar amigos!</p>
+                <h3>{t('friends.emptyTitle')}</h3>
+                <p>{t('friends.emptyText')}</p>
               </div>
             ) : (
               <div className="friends-grid">
@@ -233,7 +235,7 @@ const Friends = () => {
                         </div>
                         <span
                           className={`friend-online-status ${online ? 'online' : 'offline'}`}
-                          title={online ? 'Online agora' : 'Offline'}
+                          title={online ? t('friends.onlineNow') : t('friends.offline')}
                         />
                       </div>
 
@@ -244,14 +246,14 @@ const Friends = () => {
 
                       <div className="friend-card-actions">
                         <Link to={`/profile/${friend.id}`} className="btn-primary-sm">
-                          Ver Perfil
+                          {t('friends.viewProfile')}
                         </Link>
                         <button
                           type="button"
                           className="btn-danger-sm"
                           onClick={() => handleRemoveFriend(friend.id, displayName)}
                         >
-                          Remover
+                          {t('friends.remove')}
                         </button>
                       </div>
                     </article>
@@ -269,7 +271,7 @@ const Friends = () => {
               <input
                 type="text"
                 className="friends-search-input"
-                placeholder="Buscar por nome de usuário, apelido ou email..."
+                placeholder={t('friends.searchPlaceholder')}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 autoFocus
@@ -277,11 +279,11 @@ const Friends = () => {
             </div>
 
             {searchLoading ? (
-              <p>Buscando usuários...</p>
+              <p>{t('friends.searchLoading')}</p>
             ) : searchQuery.trim() && searchResults.length === 0 ? (
               <div className="friends-empty-state">
                 <div className="friends-empty-state-icon">🔍</div>
-                <p>Nenhum usuário encontrado para "{searchQuery}".</p>
+                <p>{t('friends.noResults', { query: searchQuery })}</p>
               </div>
             ) : (
               <div className="friends-grid">
@@ -302,7 +304,7 @@ const Friends = () => {
                         </div>
                         <span
                           className={`friend-online-status ${online ? 'online' : 'offline'}`}
-                          title={online ? 'Online' : 'Offline'}
+                          title={online ? t('friends.online') : t('friends.offline')}
                         />
                       </div>
 
@@ -313,16 +315,16 @@ const Friends = () => {
 
                       <div className="friend-card-actions">
                         <Link to={`/profile/${user.id}`} className="btn-primary-sm">
-                          Perfil
+                          {t('friends.profile')}
                         </Link>
 
                         {user.friendship_status === 'accepted' ? (
                           <span style={{ fontSize: '0.85rem', color: '#10b981', alignSelf: 'center' }}>
-                            ✓ Amigos
+                            {t('friends.friends')}
                           </span>
                         ) : user.friendship_status === 'pending_sent' ? (
                           <span style={{ fontSize: '0.85rem', color: 'var(--text)', alignSelf: 'center' }}>
-                            ⏳ Enviado
+                            {t('friends.sent')}
                           </span>
                         ) : (
                           <button
@@ -331,7 +333,7 @@ const Friends = () => {
                             disabled={isLoading}
                             onClick={() => handleSendRequest(user.id)}
                           >
-                            {isLoading ? 'Enviando...' : '➕ Adicionar'}
+                            {isLoading ? t('friends.sending') : t('friends.add')}
                           </button>
                         )}
                       </div>
@@ -347,12 +349,12 @@ const Friends = () => {
         {activeTab === 'requests' && (
           <div>
             <h3 style={{ fontSize: '1.2rem', marginBottom: '1rem', color: 'var(--text-h)' }}>
-              Solicitações Recebidas ({requests.received.length})
+              {t('friends.receivedRequests', { count: requests.received.length })}
             </h3>
 
             {requests.received.length === 0 ? (
               <p style={{ color: 'var(--text)', marginBottom: '2rem' }}>
-                Nenhuma solicitação de amizade pendente.
+                {t('friends.noPending')}
               </p>
             ) : (
               <div className="friends-grid" style={{ marginBottom: '2rem' }}>
@@ -382,7 +384,7 @@ const Friends = () => {
                           disabled={isLoading}
                           onClick={() => handleRespondRequest(req.id, 'accept')}
                         >
-                          ✓ Aceitar
+                          {t('friends.accept')}
                         </button>
                         <button
                           type="button"
@@ -390,7 +392,7 @@ const Friends = () => {
                           disabled={isLoading}
                           onClick={() => handleRespondRequest(req.id, 'reject')}
                         >
-                          ✕ Recusar
+                          {t('friends.reject')}
                         </button>
                       </div>
                     </article>
@@ -402,7 +404,7 @@ const Friends = () => {
             {requests.sent.length > 0 && (
               <>
                 <h3 style={{ fontSize: '1.2rem', marginBottom: '1rem', color: 'var(--text-h)' }}>
-                  Solicitações Enviadas ({requests.sent.length})
+                  {t('friends.sentRequests', { count: requests.sent.length })}
                 </h3>
                 <div className="friends-grid">
                   {requests.sent.map((req) => {
@@ -422,7 +424,7 @@ const Friends = () => {
                         <h4 className="friend-card-name">{displayName}</h4>
                         <div className="friend-card-username">@{req.user.username}</div>
                         <span style={{ fontSize: '0.85rem', color: 'var(--text)' }}>
-                          ⏳ Aguardando resposta
+                          {t('friends.awaiting')}
                         </span>
                       </article>
                     )

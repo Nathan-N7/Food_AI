@@ -1,10 +1,13 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useLocation, Link } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import './Header.css'
 import { useAuth } from '../context/AuthContext.jsx'
+import LanguageSwitcher from './LanguageSwitcher.jsx'
 
 const Header = ({ user: customUser, avatarUrl = null }) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
+  const { t } = useTranslation()
   // user comes from context; optional prop overrides for page-specific display
   const { user: authUser, logout } = useAuth()
   const navigate = useNavigate()
@@ -39,7 +42,7 @@ const Header = ({ user: customUser, avatarUrl = null }) => {
 
   // Define nome de exibição e iniciais do avatar
   const displayName =
-    currentUser?.nickname || currentUser?.username || 'Visitante'
+    currentUser?.nickname || currentUser?.username || t('header.visitor')
 
   const getInitials = (name) => {
     if (!name) return 'AI'
@@ -53,14 +56,13 @@ const Header = ({ user: customUser, avatarUrl = null }) => {
   const effectiveAvatarUrl = avatarUrl || currentUser?.avatar || null
 
   const menuItems = [
-    { label: 'Dashboard', path: '/dashboard', icon: '📊' },
-    { label: 'Meu Perfil', path: '/profile', icon: '👤' },
-    { label: 'Amigos & Status', path: '/friends', icon: '👥' },
-    { label: 'Gerar Imagem', path: '/generate', icon: '✨' },
-    { label: 'Histórico', path: '/history', icon: '📜' },
-    { label: 'Privacidade', path: '/privacy', icon: '🔒' },
-    { label: 'Termos de Serviço', path: '/terms', icon: '📄' },
-  
+    { label: t('header.dashboard'), path: '/dashboard', icon: '📊' },
+    { label: t('header.myProfile'), path: '/profile', icon: '👤' },
+    { label: t('header.friendsStatus'), path: '/friends', icon: '👥' },
+    { label: t('header.generate'), path: '/generate', icon: '✨' },
+    { label: t('header.history'), path: '/history', icon: '📜' },
+    { label: t('header.privacy'), path: '/privacy', icon: '🔒' },
+    { label: t('header.terms'), path: '/terms', icon: '📄' },
   ]
 
   return (
@@ -73,7 +75,7 @@ const Header = ({ user: customUser, avatarUrl = null }) => {
               type="button"
               className={`fai-hamburger-btn ${isMenuOpen ? 'is-active' : ''}`}
               onClick={() => setIsMenuOpen(!isMenuOpen)}
-              aria-label={isMenuOpen ? 'Fechar menu' : 'Abrir menu'}
+              aria-label={isMenuOpen ? t('header.closeMenu') : t('header.openMenu')}
               aria-expanded={isMenuOpen}
             >
               <span className="fai-hamburger-line"></span>
@@ -90,21 +92,22 @@ const Header = ({ user: customUser, avatarUrl = null }) => {
 
           {/* Lado Direito: Saudação e Avatar */}
           <div className="fai-header-right">
+            <LanguageSwitcher />
             <div className="fai-user-greeting">
-              <span className="fai-greeting-label">Bem-vindo(a),</span>
+              <span className="fai-greeting-label">{t('header.welcome')}</span>
               <strong className="fai-user-name" title={displayName}>
-                Olá, {displayName}
+                {t('header.hello', { name: displayName })}
               </strong>
             </div>
 
             <div
               className="fai-avatar-wrapper"
-              title={`Perfil de ${displayName}`}
+              title={t('header.profileOf', { name: displayName })}
               onClick={() => setIsMenuOpen(!isMenuOpen)}
             >
               <div className="fai-avatar-circle">
                 {effectiveAvatarUrl ? (
-                  <img src={effectiveAvatarUrl} alt={`Avatar de ${displayName}`} />
+                  <img src={effectiveAvatarUrl} alt={t('header.avatarOf', { name: displayName })} />
                 ) : (
                   <span>{getInitials(displayName)}</span>
                 )}
@@ -125,18 +128,18 @@ const Header = ({ user: customUser, avatarUrl = null }) => {
       {/* Menu Lateral (Drawer Hambúrguer) */}
       <aside
         className={`fai-drawer ${isMenuOpen ? 'is-open' : ''}`}
-        aria-label="Menu principal de navegação"
+        aria-label={t('header.mainNav')}
       >
         <div className="fai-drawer-header">
           <div className="fai-brand">
             <span className="fai-brand-icon">🍕</span>
-            <span className="fai-brand-title">Menu Food AI</span>
+            <span className="fai-brand-title">{t('header.menu')}</span>
           </div>
           <button
             type="button"
             className="fai-drawer-close"
             onClick={() => setIsMenuOpen(false)}
-            aria-label="Fechar menu"
+            aria-label={t('header.closeMenu')}
           >
             ✕
           </button>
@@ -165,7 +168,7 @@ const Header = ({ user: customUser, avatarUrl = null }) => {
             onClick={handleLogout}
           >
             <span className="fai-nav-icon">🚪</span>
-            <span>Sair da conta</span>
+            <span>{t('header.logout')}</span>
           </button>
         </div>
       </aside>

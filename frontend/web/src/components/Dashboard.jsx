@@ -1,12 +1,14 @@
 import { useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import Header from './Header'
 import { useAuth } from '../context/AuthContext.jsx'
 
 const Dashboard = () => {
+  const { t } = useTranslation()
   const { user } = useAuth()
 
   const navigate = useNavigate()
-  const displayName = user?.nickname || user?.username || 'Usuário'
+  const displayName = user?.nickname || user?.username || t('dashboard.user')
 
   return (
     <>
@@ -14,10 +16,10 @@ const Dashboard = () => {
       <main style={{ maxWidth: '900px', margin: '2rem auto', padding: '0 1.25rem 3rem' }}>
         <section style={{ textAlign: 'left', marginBottom: '2.5rem' }}>
           <h2 style={{ fontSize: '2rem', margin: '0 0 0.5rem', color: 'var(--text-h)' }}>
-            Bem-vindo(a), {displayName}! 
+            {t('dashboard.welcome', { name: displayName })}
           </h2>
           <p style={{ color: 'var(--text)', fontSize: '1.05rem' }}>
-            Transforme suas fotos de comida em imagens profissionais com inteligência artificial.
+            {t('dashboard.tagline')}
           </p>
         </section>
 
@@ -45,10 +47,10 @@ const Dashboard = () => {
           >
             <div style={{ fontSize: '2.5rem', marginBottom: '0.75rem' }}>✨</div>
             <h3 style={{ margin: '0 0 0.4rem', color: 'var(--text-h)', fontSize: '1.25rem' }}>
-              Gerar Imagem
+              {t('dashboard.generateTitle')}
             </h3>
             <p style={{ color: 'var(--text)', fontSize: '0.9rem', margin: 0 }}>
-              Faça upload de uma foto de prato e deixe o modelo Flux gerar uma versão premium.
+              {t('dashboard.generateDesc')}
             </p>
           </div>
 
@@ -67,10 +69,10 @@ const Dashboard = () => {
           >
             <div style={{ fontSize: '2.5rem', marginBottom: '0.75rem' }}>📜</div>
             <h3 style={{ margin: '0 0 0.4rem', color: 'var(--text-h)', fontSize: '1.25rem' }}>
-              Histórico
+              {t('dashboard.historyTitle')}
             </h3>
             <p style={{ color: 'var(--text)', fontSize: '0.9rem', margin: 0 }}>
-              Acesse todas as suas fotos originais e fotos geradas anteriormente.
+              {t('dashboard.historyDesc')}
             </p>
           </div>
 
@@ -89,10 +91,10 @@ const Dashboard = () => {
           >
             <div style={{ fontSize: '2.5rem', marginBottom: '0.75rem' }}>👤</div>
             <h3 style={{ margin: '0 0 0.4rem', color: 'var(--text-h)', fontSize: '1.25rem' }}>
-              Meu Perfil
+              {t('dashboard.myProfileTitle')}
             </h3>
             <p style={{ color: 'var(--text)', fontSize: '0.9rem', margin: 0 }}>
-              Edite suas informações, faça upload de avatar e acompanhe suas estatísticas.
+              {t('dashboard.myProfileDesc')}
             </p>
           </div>
 
@@ -111,10 +113,10 @@ const Dashboard = () => {
           >
             <div style={{ fontSize: '2.5rem', marginBottom: '0.75rem' }}>👥</div>
             <h3 style={{ margin: '0 0 0.4rem', color: 'var(--text-h)', fontSize: '1.25rem' }}>
-              Amigos & Status
+              {t('dashboard.friendsTitle')}
             </h3>
             <p style={{ color: 'var(--text)', fontSize: '0.9rem', margin: 0 }}>
-              Veja quem está online em tempo real, busque usuários e gerencie conexões.
+              {t('dashboard.friendsDesc')}
             </p>
           </div>
         </div>

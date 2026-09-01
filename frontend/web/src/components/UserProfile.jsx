@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import Header from './Header'
 import { usePresence } from '../hooks/usePresence'
 import { fetchJson } from '../lib/api.js'
@@ -10,6 +11,7 @@ const API_URL = '/api'
 const UserProfile = () => {
   const { id } = useParams()
   const navigate = useNavigate()
+  const { t } = useTranslation()
   const { isFriendOnline } = usePresence()
 
   const [loading, setLoading] = useState(true)
@@ -28,9 +30,9 @@ const UserProfile = () => {
       setUserData(data)
     } catch (err) {
       if (err.status === 404) {
-        setMessage('Usuário não encontrado.')
+        setMessage(t('userProfile.notFound'))
       } else {
-        setMessage('Erro ao carregar dados do usuário.')
+        setMessage(t('userProfile.loadError'))
       }
     } finally {
       setLoading(false)
@@ -50,7 +52,7 @@ const UserProfile = () => {
         friendship_id: data.friendship_id,
       }))
     } catch (err) {
-      alert(err.message || 'Erro ao enviar solicitação')
+      alert(err.message || t('userProfile.requestError'))
     } finally {
       setActionLoading(false)
     }
@@ -71,14 +73,14 @@ const UserProfile = () => {
         friendship_status: action === 'accept' ? 'accepted' : 'none',
       }))
     } catch {
-      alert('Erro de conexão')
+      alert(t('userProfile.connectionError'))
     } finally {
       setActionLoading(false)
     }
   }
 
   async function handleRemoveFriend() {
-    if (!confirm('Deseja realmente desfazer a amizade?')) return
+    if (!confirm(t('userProfile.confirmUnfriend'))) return
 
     try {
       setActionLoading(true)
@@ -92,7 +94,7 @@ const UserProfile = () => {
         friendship_id: null,
       }))
     } catch {
-      alert('Erro ao remover amigo')
+      alert(t('userProfile.removeError'))
     } finally {
       setActionLoading(false)
     }
@@ -108,7 +110,7 @@ const UserProfile = () => {
   }
 
   const isOnline = isFriendOnline(id) || userData?.is_online
-  const displayName = userData?.nickname || userData?.username || 'Usuário'
+  const displayName = userData?.nickname || userData?.username || t('userProfile.user')
 
   return (
     <>
@@ -127,11 +129,11 @@ const UserProfile = () => {
           }}
           onClick={() => navigate(-1)}
         >
-          ← Voltar
+          {t('userProfile.back')}
         </button>
 
         {loading ? (
-          <p>Carregando perfil...</p>
+          <p>{t('userProfile.loading')}</p>
         ) : message ? (
           <p>{message}</p>
         ) : (
@@ -140,7 +142,7 @@ const UserProfile = () => {
               <div className="profile-avatar-wrapper">
                 <div className="profile-avatar-img">
                   {userData.avatar ? (
-                    <img src={userData.avatar} alt={`Avatar de ${displayName}`} />
+                    <img src={userData.avatar} alt={t('userProfile.avatarOf', { name: displayName })} />
                   ) : (
                     <span>{getInitials(displayName)}</span>
                   )}
@@ -157,7 +159,7 @@ const UserProfile = () => {
                     border: '3px solid var(--bg)',
                     boxShadow: isOnline ? '0 0 8px #10b981' : 'none',
                   }}
-                  title={isOnline ? 'Online agora' : 'Offline'}
+                  title={isOnline ? t('userProfile.onlineNow') : t('userProfile.offline')}
                 />
               </div>
 
@@ -165,7 +167,7 @@ const UserProfile = () => {
                 <h2>{displayName}</h2>
                 <div className="profile-username-tag">@{userData.username}</div>
                 <p className="profile-bio-text">
-                  {userData.bio || 'Este usuário ainda não adicionou uma biografia.'}
+                  {userData.bio || t('userProfile.noBio')}
                 </p>
 
                 {/* Friendship actions */}
@@ -177,7 +179,7 @@ const UserProfile = () => {
                       style={{ padding: '0.5rem 1.25rem', fontSize: '0.9rem' }}
                       onClick={() => navigate('/profile')}
                     >
-                      ✏️ Editar Meu Perfil
+                      {t('userProfile.editMyProfile')}
                     </button>
                   )}
 
@@ -189,13 +191,13 @@ const UserProfile = () => {
                       disabled={actionLoading}
                       onClick={handleSendFriendRequest}
                     >
-                      ➕ Adicionar Amigo
+                      {t('userProfile.addFriend')}
                     </button>
                   )}
 
                   {userData.friendship_status === 'pending_sent' && (
                     <span style={{ color: 'var(--text)', fontSize: '0.9rem' }}>
-                      ⏳ Solicitação de amizade enviada
+                      {t('userProfile.requestSent')}
                     </span>
                   )}
 
@@ -208,7 +210,7 @@ const UserProfile = () => {
                         disabled={actionLoading}
                         onClick={() => handleRespondFriendRequest('accept')}
                       >
-                        ✓ Aceitar Amizade
+                        {t('userProfile.acceptFriendship')}
                       </button>
                       <button
                         type="button"
@@ -216,7 +218,7 @@ const UserProfile = () => {
                         disabled={actionLoading}
                         onClick={() => handleRespondFriendRequest('reject')}
                       >
-                        ✕ Recusar
+                        {t('userProfile.reject')}
                       </button>
                     </div>
                   )}
@@ -224,7 +226,7 @@ const UserProfile = () => {
                   {userData.friendship_status === 'accepted' && (
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                       <span style={{ color: '#10b981', fontWeight: 600, fontSize: '0.9rem' }}>
-                        ✓ Vocês são amigos
+                        {t('userProfile.youAreFriends')}
                       </span>
                       <button
                         type="button"
@@ -232,7 +234,7 @@ const UserProfile = () => {
                         disabled={actionLoading}
                         onClick={handleRemoveFriend}
                       >
-                        Desfazer amizade
+                        {t('userProfile.unfriend')}
                       </button>
                     </div>
                   )}
@@ -248,7 +250,7 @@ const UserProfile = () => {
                   <span className="profile-stat-value">
                     {userData.generations_count || 0}
                   </span>
-                  <span className="profile-stat-label">Gerações Feitas</span>
+                  <span className="profile-stat-label">{t('userProfile.statsGenerations')}</span>
                 </div>
               </div>
 
@@ -258,9 +260,9 @@ const UserProfile = () => {
                 </div>
                 <div className="profile-stat-content">
                   <span className="profile-stat-value" style={{ fontSize: '1.1rem' }}>
-                    {isOnline ? 'Online' : 'Offline'}
+                    {isOnline ? t('userProfile.online') : t('userProfile.offline')}
                   </span>
-                  <span className="profile-stat-label">Presença em tempo real</span>
+                  <span className="profile-stat-label">{t('userProfile.statsPresence')}</span>
                 </div>
               </div>
 
@@ -272,7 +274,7 @@ const UserProfile = () => {
                       ? new Date(userData.date_joined).toLocaleDateString('pt-BR')
                       : '—'}
                   </span>
-                  <span className="profile-stat-label">Membro Desde</span>
+                  <span className="profile-stat-label">{t('userProfile.statsSince')}</span>
                 </div>
               </div>
             </section>

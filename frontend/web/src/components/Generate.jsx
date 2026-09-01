@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import Header from './Header'
 import { uploadForm } from '../lib/api.js'
 
@@ -7,6 +8,7 @@ const API_URL = '/api'
 
 const Generate = () => {
   const navigate = useNavigate()
+  const { t } = useTranslation()
 
   const [image, setImage] = useState(null)
   const [result, setResult] = useState(null)
@@ -51,12 +53,12 @@ const Generate = () => {
     event.preventDefault()
 
     if (!image) {
-      setMessage('Selecione uma imagem')
+      setMessage(t('generate.selectImage'))
       return
     }
 
     setGenerating(true)
-    setMessage('Gerando imagem...')
+    setMessage(t('generate.generating'))
     setResult(null)
     setProgress(0)
 
@@ -72,11 +74,11 @@ const Generate = () => {
         onProgress: setProgress,
       })
       setResult(data)
-      setMessage('Imagem gerada com sucesso')
-      notificarUsuario("Sua imagem está pronta! Venha ver o resultado.")
+      setMessage(t('generate.generationSuccess'))
+      notificarUsuario(t('generate.notificationReady'))
     } catch (error) {
-      setMessage(error.status === 401 ? 'Faça login novamente' : (error.message || 'Erro ao gerar imagem'))
-      notificarUsuario("Ops, ocorreu um erro ao gerar sua imagem.")
+      setMessage(error.status === 401 ? t('generate.loginAgain') : (error.message || t('generate.generationError')))
+      notificarUsuario(t('generate.notificationError'))
     } finally {
       setGenerating(false)
     }
@@ -86,14 +88,14 @@ const Generate = () => {
     <>
       <Header />
       <main style={{ maxWidth: '700px', margin: '2rem auto', padding: '0 1.25rem 3rem' }}>
-        <h2>Gerar imagem</h2>
+        <h2>{t('generate.title')}</h2>
 
         {preview && (
           <div>
-            <p>Preview:</p>
+            <p>{t('generate.preview')}</p>
             <img
               src={preview}
-              alt="Preview da imagem selecionada"
+              alt={t('generate.previewAlt')}
               style={{ width: '100%', maxWidth: '300px' }}
             />
           </div>
@@ -115,13 +117,13 @@ const Generate = () => {
           {generating && (
             <div>
               <progress value={progress} max={100} style={{ width: '100%' }} />
-              <p>{progress}% enviado — aguardando processamento da IA...</p>
+              <p>{t('generate.uploadProgress', { progress })}</p>
             </div>
           )}
           <br />
 
           <button type="submit" disabled={generating}>
-            {generating ? 'Gerando...' : 'Gerar imagem'}
+            {generating ? t('generate.generatingShort') : t('generate.submit')}
           </button>
         </form>
 
@@ -129,15 +131,15 @@ const Generate = () => {
 
         {result?.resultado && (
           <section>
-            <h3>Resultado da detecção</h3>
+            <h3>{t('generate.resultTitle')}</h3>
             <p>
-              Classe detectada:{' '}
+              {t('generate.detectedClass')}{' '}
               <strong>{result.resultado.name_class}</strong>
             </p>
             <p>
-              Válido:{' '}
+              {t('generate.valid')}{' '}
               <strong>
-                {result.resultado.validate ? 'Sim' : 'Não'}
+                {result.resultado.validate ? t('generate.yes') : t('generate.no')}
               </strong>
             </p>
           </section>
@@ -145,11 +147,11 @@ const Generate = () => {
 
         {result?.url_image && (
           <section>
-            <h3>Imagem gerada</h3>
+            <h3>{t('generate.generatedImageTitle')}</h3>
 
             <img
               src={result.url_image}
-              alt="Imagem gerada pelo Food AI"
+              alt={t('generate.generatedImageAlt')}
               style={{
                 width: '100%',
                 maxWidth: '400px',
@@ -157,7 +159,7 @@ const Generate = () => {
             />
           </section>
         )}
-        <button onClick={() => navigate('/history')}>Histórico</button>
+        <button onClick={() => navigate('/history')}>{t('generate.history')}</button>
       </main>
     </>
   )
