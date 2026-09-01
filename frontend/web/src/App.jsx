@@ -1,3 +1,5 @@
+import { ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 import {
   Navigate,
   Route,
@@ -27,6 +29,8 @@ function ProtectedRoute({ children }) {
 
 function App() {
   return (
+    <>
+      <ToastContainer position="top-right" autoClose={3000} />
     <Routes>
       <Route
         path="/"
@@ -133,6 +137,7 @@ function App() {
       />
 
     </Routes>
+    </>
   )
 }
 

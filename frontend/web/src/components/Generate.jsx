@@ -1,3 +1,4 @@
+import { toast } from 'react-toastify';
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 
@@ -45,7 +46,7 @@ const Generate = () => {
     }
 
     if (!image) {
-      setMessage('Selecione uma imagem')
+      setMessage('Selecione uma imagem'); toast.warning('Selecione uma imagem')
       return
     }
 
@@ -72,19 +73,19 @@ const Generate = () => {
         const data = JSON.parse(xhr.responseText)
         if (xhr.status >= 200 && xhr.status < 300) {
           setResult(data)
-          setMessage('Imagem gerada com sucesso')
+          setMessage('Imagem gerada com sucesso'); toast.success('Imagem gerada com sucesso!')
         } else {
-          setMessage(data.error || 'Erro ao gerar imagem')
+          setMessage(data.error || 'Erro ao gerar imagem'); toast.error(data.error || 'Erro ao gerar imagem')
         }
       } catch {
-        setMessage('Resposta inválida do servidor')
+        setMessage('Resposta inválida do servidor'); toast.error('Resposta inválida do servidor')
       } finally {
         setGenerating(false)
       }
     }
     // Se a conexão cair
     xhr.onerror = () => {
-      setMessage('Não foi possível concluir a geração')
+      setMessage('Não foi possível concluir a geração'); toast.error('Não foi possível concluir a geração')
       setGenerating(false)
     }
     xhr.open('POST', `${API_URL}/generate/`)
